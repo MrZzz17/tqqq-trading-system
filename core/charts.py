@@ -10,11 +10,11 @@ from typing import List, Optional
 
 from core.swing_tracker import SwingPoint
 
-BG_COLOR = "rgba(21,32,43,1)"
-GRID_COLOR = "rgba(56,68,77,0.3)"
-GREEN = "#17BF63"
-RED = "#E0245E"
-BLUE = "#1DA1F2"
+BG_COLOR = "rgba(10,15,26,1)"
+GRID_COLOR = "rgba(255,255,255,0.04)"
+GREEN = "#34d399"
+RED = "#f87171"
+BLUE = "#818cf8"
 
 
 def build_tqqq_chart(
@@ -22,7 +22,8 @@ def build_tqqq_chart(
     swings: Optional[List[SwingPoint]] = None,
     lookback_days: int = 120,
 ) -> go.Figure:
-    plot_df = df.iloc[-lookback_days:] if len(df) > lookback_days else df
+    # Use ALL data so zooming out reveals more history
+    plot_df = df
 
     fig = make_subplots(
         rows=2, cols=1,
@@ -45,10 +46,10 @@ def build_tqqq_chart(
     ), row=1, col=1)
 
     ma_configs = [
-        ("SMA_10", "10d MA", "#FFAD1F", 1),
+        ("SMA_10", "10d MA", "#fbbf24", 1),
         ("EMA_21", "21d EMA", BLUE, 1.5),
-        ("SMA_50", "50d MA", "#E040FB", 2),
-        ("SMA_200", "200d MA", "#F45D22", 2),
+        ("SMA_50", "50d MA", "#c084fc", 2),
+        ("SMA_200", "200d MA", "#fb923c", 2),
     ]
     for col_name, label, color, width in ma_configs:
         if col_name in plot_df.columns:
@@ -69,7 +70,7 @@ def build_tqqq_chart(
         y=plot_df["Volume"],
         name="Volume",
         marker_color=colors,
-        opacity=0.4,
+        opacity=0.3,
     ), row=2, col=1)
 
     if "Vol_SMA_50" in plot_df.columns:
@@ -77,12 +78,12 @@ def build_tqqq_chart(
             x=plot_df.index,
             y=plot_df["Vol_SMA_50"],
             name="50d Avg Vol",
-            line=dict(color="#FFAD1F", width=1, dash="dot"),
+            line=dict(color="#fbbf24", width=1, dash="dot"),
         ), row=2, col=1)
 
     if swings:
         for s in swings:
-            if s.date in plot_df.index or (s.date >= plot_df.index[0] and s.date <= plot_df.index[-1]):
+            if s.date >= plot_df.index[0] and s.date <= plot_df.index[-1]:
                 color = RED if s.point_type == "peak" else GREEN
                 symbol = "triangle-down" if s.point_type == "peak" else "triangle-up"
                 fig.add_trace(go.Scatter(
@@ -90,20 +91,29 @@ def build_tqqq_chart(
                     y=[s.price],
                     mode="markers",
                     marker=dict(size=12, color=color, symbol=symbol,
-                                line=dict(width=1, color="#E7E9EA")),
+                                line=dict(width=1, color="#f0f0f0")),
                     name=f"{'Peak' if s.point_type == 'peak' else 'Trough'} ${s.price:.2f}",
                     showlegend=False,
                     hovertext=f"{s.point_type.title()}: ${s.price:.2f}<br>{s.pct_move:+.1f}% | {s.trading_days}d",
                 ), row=1, col=1)
+
+    # Set default visible range to lookback_days, but allow zooming to see all data
+    if len(plot_df) > lookback_days:
+        x_start = plot_df.index[-lookback_days]
+        x_end = plot_df.index[-1]
+    else:
+        x_start = plot_df.index[0]
+        x_end = plot_df.index[-1]
 
     fig.update_layout(
         template="plotly_dark",
         height=600,
         margin=dict(l=10, r=10, t=30, b=10),
         xaxis_rangeslider_visible=False,
+        xaxis=dict(range=[x_start, x_end]),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-            font=dict(color="#8899A6", size=11),
+            font=dict(color="#9ca3af", size=11),
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor=BG_COLOR,
@@ -143,7 +153,7 @@ def build_distribution_chart(nasdaq_df: pd.DataFrame, dist_days: list, lookback:
         margin=dict(l=10, r=10, t=10, b=10),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-            font=dict(color="#8899A6", size=11),
+            font=dict(color="#9ca3af", size=11),
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor=BG_COLOR,
