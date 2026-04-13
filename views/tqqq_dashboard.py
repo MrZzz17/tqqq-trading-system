@@ -60,19 +60,23 @@ def render():
     qqq_price = get_current_price(qqq)
 
     # ── Sidebar ──
-    st.sidebar.markdown("### Settings")
-    chart_lookback = st.sidebar.slider("Chart lookback (days)", 30, 365, 120)
-    swing_min_pct = st.sidebar.slider("Swing min % move", 3.0, 15.0, 5.0, 0.5)
-    bulls_pct = st.sidebar.number_input(
-        "Bulls % (AAII sentiment)",
-        min_value=0.0, max_value=100.0, value=0.0, step=1.0,
-        help="Enter the latest AAII bullish sentiment %. Leave 0 if unknown.",
-    )
+    with st.sidebar:
+        st.markdown("#### ⚙️ Settings")
+        chart_lookback = st.slider("Chart lookback (days)", 30, 365, 120)
+        swing_min_pct = st.slider("Swing min % move", 3.0, 15.0, 5.0, 0.5)
+        bulls_pct = st.number_input(
+            "Bulls % (AAII sentiment)",
+            min_value=0.0, max_value=100.0, value=0.0, step=1.0,
+            help="Enter the latest AAII bullish sentiment %. Leave 0 if unknown.",
+        )
+        st.markdown("---")
+        if st.button("🔄 Refresh Data", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+        st.markdown("---")
+        st.caption("Data: Yahoo Finance (delayed)")
+        st.caption("Not financial advice.")
     bulls_input = bulls_pct if bulls_pct > 0 else None
-    st.sidebar.markdown("---")
-    if st.sidebar.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        st.rerun()
 
     # ══════════════════════════════════════════════════════════════
     # TAB LAYOUT
