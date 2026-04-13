@@ -28,7 +28,7 @@ REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 
 LOGO_URL = "https://pbs.twimg.com/profile_images/1959893019509071872/Xa6rYCoN_400x400.jpg"
-TWITTER_URL = "https://x.com/MrZzz17"
+TWITTER_URL = "https://x.com/__MrZzz__"
 
 
 def _styled_card(title: str, content: str, border_color: str = "#38444D") -> str:
