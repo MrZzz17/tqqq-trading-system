@@ -92,6 +92,9 @@ MIN_HOLD_DAYS = 15
 PULLBACK_ENTRY_PCT = 8.0
 COOLDOWN_BULL = 3
 COOLDOWN_BEAR = 7
+COOLDOWN_AFTER_STREAK = 15
+MAX_CONSECUTIVE_LOSSES = 2
+DIST_DAY_ENTRY_BLOCK = 4
 
 
 # ── Buy Signal Detection ─────────────────────────────────────────
@@ -108,6 +111,23 @@ def _is_bull_regime(tqqq: pd.DataFrame, idx: int) -> bool:
         if sma200_prev and not pd.isna(sma200_prev):
             return float(sma200) >= float(sma200_prev)
     return True
+
+
+def _qqq_below_200(qqq: pd.DataFrame, idx: int) -> bool:
+    """True when QQQ is trading below its 200-day SMA."""
+    sma200 = qqq.iloc[idx].get("SMA_200")
+    if sma200 is None or pd.isna(sma200):
+        return False
+    return float(qqq.iloc[idx]["Close"]) < float(sma200)
+
+
+def _qqq_death_cross(qqq: pd.DataFrame, idx: int) -> bool:
+    """True when QQQ's 50-day SMA is below its 200-day SMA (death cross)."""
+    sma50 = qqq.iloc[idx].get("SMA_50")
+    sma200 = qqq.iloc[idx].get("SMA_200")
+    if sma50 is None or pd.isna(sma50) or sma200 is None or pd.isna(sma200):
+        return False
+    return float(sma50) < float(sma200)
 
 
 def _find_ftd_signal(nasdaq: pd.DataFrame, idx: int) -> bool:
@@ -400,6 +420,9 @@ def _run_continuous(start_year: int, end_year: int):
 
     pf = Portfolio(STARTING_CAPITAL)
     cooldown_until = 0
+    consecutive_losses = 0
+    last_trade_idx = 0
+    last_ftd_lost = False
 
     equity_by_date: Dict[pd.Timestamp, float] = {}
     trades_by_year: Dict[int, List[Trade]] = {}
@@ -424,6 +447,33 @@ def _run_continuous(start_year: int, end_year: int):
             cash_after=0.0,
         )
 
+    def _close_position(close_idx, date, price, current_year):
+        nonlocal consecutive_losses, cooldown_until, last_trade_idx, last_ftd_lost
+        held_days = close_idx - pf.entry_idx
+        t = _make_trade(date, price)
+        t.duration_days = held_days
+        is_loss = t.return_pct <= 0
+        was_ftd = pf.signal_type == "FTD"
+        pf.sell_all(price)
+        t.portfolio_after = round(pf.total_value(price), 2)
+        t.cash_after = round(pf.cash, 2)
+        trades_by_year.setdefault(current_year, []).append(t)
+        last_trade_idx = close_idx
+
+        if is_loss:
+            consecutive_losses += 1
+        else:
+            consecutive_losses = 0
+
+        if was_ftd:
+            last_ftd_lost = is_loss
+
+        bull = _is_bull_regime(tqqq_df, close_idx)
+        if bull:
+            cooldown_until = close_idx + COOLDOWN_BULL
+        else:
+            cooldown_until = close_idx + COOLDOWN_BEAR
+
     for idx in sim_indices:
         date = all_idx[idx]
         current_year = date.year
@@ -437,22 +487,50 @@ def _run_continuous(start_year: int, end_year: int):
                 equity_by_date[date] = pf.total_value(price)
                 continue
 
+            # Reset loss streak after 30+ trading days gap (market has proven itself)
+            if consecutive_losses > 0 and (idx - last_trade_idx) > 30:
+                consecutive_losses = 0
+
+            death_cross = _qqq_death_cross(qqq_df, qq_idx)
+            below_200 = _qqq_below_200(qqq_df, qq_idx)
             bull = _is_bull_regime(tqqq_df, idx)
+
+            # Fix 1: Distribution day gate -- blocks non-FTD entries only
+            dist_days = _count_distribution_days(nasdaq_df, nq_idx)
+            dist_day_block = dist_days >= DIST_DAY_ENTRY_BLOCK
+
             is_ftd = _find_ftd_signal(nasdaq_df, nq_idx)
-            is_3wk = _find_3wk_signal(qqq_df, tqqq_df, idx)
-            is_pullback = bull and _find_pullback_entry(tqqq_df, idx)
-            is_ma_retake = bull and _find_ma_retake_entry(tqqq_df, idx)
+
+            # Fix 4: Death cross blocks non-FTD entries
+            # Fix 1: Dist day gate blocks non-FTD entries
+            allow_non_ftd = (not death_cross) and (not dist_day_block)
+
+            is_3wk = allow_non_ftd and _find_3wk_signal(qqq_df, tqqq_df, idx)
+            is_pullback = allow_non_ftd and bull and _find_pullback_entry(tqqq_df, idx)
+            is_ma_retake = allow_non_ftd and bull and _find_ma_retake_entry(tqqq_df, idx)
 
             alloc = 0.0
             signal = ""
             if is_ftd:
-                alloc, signal = 1.0, "FTD"
+                # Fix 2: Only reduce FTD when below 200-day AND last FTD failed
+                # First FTD after a crash gets full allocation (Vibha goes all-in)
+                # Subsequent FTDs in a bear get 50% (prior FTD proved the market wasn't ready)
+                if below_200 and last_ftd_lost:
+                    alloc = 0.5
+                else:
+                    alloc = 1.0
+                signal = "FTD"
+                consecutive_losses = 0
             elif is_3wk:
                 alloc, signal = 0.5, "3WK"
             elif is_pullback:
                 alloc, signal = 0.5, "Pullback"
             elif is_ma_retake:
                 alloc, signal = 0.5, "MA Retake"
+
+            # Fix 3: Cap non-FTD sizing after consecutive losses
+            if alloc > 0 and signal != "FTD" and consecutive_losses >= MAX_CONSECUTIVE_LOSSES:
+                alloc = min(alloc, 0.25)
 
             if alloc > 0:
                 lookback = min(20, idx)
@@ -463,42 +541,23 @@ def _run_continuous(start_year: int, end_year: int):
         else:
             action = _evaluate_exit(tqqq_df, nasdaq_df, idx,
                                     pf.entry_price, pf.entry_idx, pf.rally_low)
-            held_days = idx - pf.entry_idx
 
             if action == "full_exit":
-                t = _make_trade(date, price)
-                t.duration_days = held_days
-                pf.sell_all(price)
-                t.portfolio_after = round(pf.total_value(price), 2)
-                t.cash_after = round(pf.cash, 2)
-                trades_by_year.setdefault(current_year, []).append(t)
-                bull = _is_bull_regime(tqqq_df, idx)
-                cooldown_until = idx + (COOLDOWN_BULL if bull else COOLDOWN_BEAR)
+                _close_position(idx, date, price, current_year)
 
             elif action in ("trim_heavy", "trim_light"):
                 trim_frac = 0.4 if action == "trim_heavy" else 0.2
                 pf.trim(price, trim_frac)
                 if pf.shares * price < pf.total_value(price) * 0.10:
-                    t = _make_trade(date, price)
-                    t.duration_days = held_days
-                    pf.sell_all(price)
-                    t.portfolio_after = round(pf.total_value(price), 2)
-                    t.cash_after = round(pf.cash, 2)
-                    trades_by_year.setdefault(current_year, []).append(t)
-                    cooldown_until = idx + COOLDOWN_BULL
+                    _close_position(idx, date, price, current_year)
 
         equity_by_date[date] = pf.total_value(price)
 
     if pf.in_position:
         last_date = all_idx[sim_indices[-1]]
         price = float(tqqq_df.iloc[sim_indices[-1]]["Close"])
-        held_days = sim_indices[-1] - pf.entry_idx
-        t = _make_trade(last_date, price)
-        t.duration_days = max(held_days, 1)
-        pf.sell_all(price)
-        t.portfolio_after = round(pf.total_value(price), 2)
-        t.cash_after = round(pf.cash, 2)
-        trades_by_year.setdefault(last_date.year, []).append(t)
+        last_idx = sim_indices[-1]
+        _close_position(last_idx, last_date, price, last_date.year)
         equity_by_date[last_date] = pf.total_value(price)
 
     return equity_by_date, trades_by_year, tqqq_df, qqq_df
