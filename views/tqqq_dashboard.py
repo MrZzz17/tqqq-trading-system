@@ -398,7 +398,7 @@ def render():
             regime_color = "#17BF63" if price > above_200 and above_200 > 0 else "#E0245E"
             regime_label = "BULL" if price > above_200 and above_200 > 0 else "BEAR"
 
-            dd_color = "#17BF63" if dd_pct > -5 else ("#FFAD1F" if dd_pct > -10 else "#E0245E")
+            dd_color = "#34d399" if dd_pct >= 0 else "#f87171"
 
             st.markdown(f"""<div style="border: 1px solid rgba(29,161,242,0.15); border-radius: 12px;
                 padding: 18px; background: rgba(29,161,242,0.03);">
