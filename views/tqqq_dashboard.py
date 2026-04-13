@@ -19,8 +19,76 @@ from core.signals import (
 )
 from core.swing_tracker import detect_swings, current_swing_stats, swing_summary_stats
 from core.charts import build_tqqq_chart, build_distribution_chart
-from core.backtest import run_all_backtests, STARTING_CAPITAL
+from core.backtest import run_all_backtests, STARTING_CAPITAL, Trade, YearResult
 import config
+import json
+import os
+
+
+def _load_backtest_cached():
+    """Load backtest from pre-computed JSON cache. Recompute if missing or stale."""
+    cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_cache.json")
+
+    if os.path.exists(cache_path):
+        cache_age = dt.datetime.now().timestamp() - os.path.getmtime(cache_path)
+        if cache_age < 86400:  # less than 24 hours old
+            try:
+                with open(cache_path) as f:
+                    data = json.load(f)
+                results = []
+                for r in data:
+                    trades = [Trade(**t) for t in r["trades"]]
+                    results.append(YearResult(
+                        year=r["year"], total_return_pct=r["total_return_pct"],
+                        num_trades=r["num_trades"], win_rate_pct=r["win_rate_pct"],
+                        avg_win_pct=r["avg_win_pct"], avg_loss_pct=r["avg_loss_pct"],
+                        max_win_pct=r["max_win_pct"], max_loss_pct=r["max_loss_pct"],
+                        best_trade=r["best_trade"], worst_trade=r["worst_trade"],
+                        tqqq_buy_hold_pct=r["tqqq_buy_hold_pct"],
+                        qqq_buy_hold_pct=r["qqq_buy_hold_pct"],
+                        trades=trades, starting_value=r["starting_value"],
+                        ending_value=r["ending_value"],
+                    ))
+                return results
+            except Exception:
+                pass
+
+    # Cache missing or stale — recompute
+    with st.spinner("Computing backtest (first load only)..."):
+        results = run_all_backtests()
+
+    # Save to cache for next time
+    try:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        cache_data = []
+        for r in results:
+            trades = [{
+                "entry_date": t.entry_date, "exit_date": t.exit_date,
+                "entry_price": t.entry_price, "exit_price": t.exit_price,
+                "return_pct": t.return_pct, "signal_type": t.signal_type,
+                "duration_days": t.duration_days, "outcome": t.outcome,
+                "shares": t.shares, "cash_deployed": t.cash_deployed,
+                "portfolio_before": t.portfolio_before,
+                "portfolio_after": t.portfolio_after,
+                "cash_after": t.cash_after,
+            } for t in r.trades]
+            cache_data.append({
+                "year": r.year, "total_return_pct": r.total_return_pct,
+                "num_trades": r.num_trades, "win_rate_pct": r.win_rate_pct,
+                "avg_win_pct": r.avg_win_pct, "avg_loss_pct": r.avg_loss_pct,
+                "max_win_pct": r.max_win_pct, "max_loss_pct": r.max_loss_pct,
+                "best_trade": r.best_trade, "worst_trade": r.worst_trade,
+                "tqqq_buy_hold_pct": r.tqqq_buy_hold_pct,
+                "qqq_buy_hold_pct": r.qqq_buy_hold_pct,
+                "starting_value": r.starting_value,
+                "ending_value": r.ending_value, "trades": trades,
+            })
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f)
+    except Exception:
+        pass
+
+    return results
 
 
 SEVERITY_ICONS = {"watch": "👀", "warning": "⚠️", "sell": "🔴"}
@@ -106,9 +174,8 @@ def render():
         st.caption("Not financial advice.")
     bulls_input = bulls_pct if bulls_pct > 0 else None
 
-    # ── Pre-compute backtest (used by Dashboard + Performance tabs) ──
-    with st.spinner("Loading backtest data..."):
-        bt_results = run_all_backtests()
+    # ── Load backtest from cache (instant) or recompute if stale ──
+    bt_results = _load_backtest_cached()
 
     # ══════════════════════════════════════════════════════════════
     # TAB LAYOUT
