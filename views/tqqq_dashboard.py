@@ -27,20 +27,37 @@ SEVERITY_ICONS = {"watch": "👀", "warning": "⚠️", "sell": "🔴"}
 REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 
-def _styled_card(title: str, content: str, border_color: str = "#333") -> str:
-    return f"""<div style="border: 1px solid {border_color}; border-radius: 10px;
-        padding: 20px; margin-bottom: 12px; background: rgba(255,255,255,0.02);">
-        <div style="font-weight: 700; font-size: 1.05em; margin-bottom: 8px; color: #eee;">{title}</div>
-        <div style="font-size: 0.9em; color: #bbb; line-height: 1.6;">{content}</div>
+LOGO_URL = "https://pbs.twimg.com/profile_images/1959893019509071872/Xa6rYCoN_400x400.jpg"
+TWITTER_URL = "https://x.com/MrZzz17"
+
+
+def _styled_card(title: str, content: str, border_color: str = "#38444D") -> str:
+    return f"""<div style="border: 1px solid {border_color}; border-radius: 12px;
+        padding: 20px; margin-bottom: 12px; background: rgba(29,161,242,0.03);">
+        <div style="font-weight: 700; font-size: 1.05em; margin-bottom: 8px; color: #E7E9EA;">{title}</div>
+        <div style="font-size: 0.9em; color: #8899A6; line-height: 1.7;">{content}</div>
     </div>"""
 
 
 def render():
-    st.markdown("""
-        <div style="text-align: center; padding: 10px 0 5px 0;">
-            <h1 style="margin-bottom: 0; font-size: 2.4em;">TQQQ Trading System</h1>
-            <p style="color: #888; font-size: 1.05em; margin-top: 4px;">
-                Rules-based swing trading &nbsp;|&nbsp; 3x leveraged Nasdaq 100
+    st.markdown(f"""
+        <div style="text-align: center; padding: 20px 0 10px 0;">
+            <a href="{TWITTER_URL}" target="_blank" style="text-decoration: none;">
+                <img src="{LOGO_URL}" alt="MrZzz"
+                     style="width: 64px; height: 64px; border-radius: 50%;
+                            border: 2px solid #1DA1F2; margin-bottom: 10px;
+                            box-shadow: 0 0 20px rgba(29,161,242,0.3);">
+            </a>
+            <h1 style="margin-bottom: 0; font-size: 2.2em; color: #E7E9EA;
+                        letter-spacing: -0.02em;">
+                TQQQ Trading System
+            </h1>
+            <p style="color: #8899A6; font-size: 1.0em; margin-top: 6px;">
+                Rules-based swing trading &nbsp;&#183;&nbsp; 3x leveraged Nasdaq 100
+                &nbsp;&#183;&nbsp;
+                <a href="{TWITTER_URL}" target="_blank"
+                   style="color: #1DA1F2; text-decoration: none; font-weight: 600;">
+                    by @MrZzz</a>
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -61,7 +78,17 @@ def render():
 
     # ── Sidebar ──
     with st.sidebar:
-        st.markdown("#### ⚙️ Settings")
+        st.markdown(f"""
+            <div style="text-align: center; padding: 10px 0 16px 0;">
+                <img src="{LOGO_URL}" style="width: 48px; height: 48px; border-radius: 50%;
+                     border: 2px solid #1DA1F2;">
+                <p style="color: #E7E9EA; font-weight: 700; margin: 8px 0 2px 0; font-size: 0.95em;">
+                    TQQQ System</p>
+                <p style="color: #657786; font-size: 0.75em; margin: 0;">by @MrZzz</p>
+            </div>
+        """, unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("##### Settings")
         chart_lookback = st.slider("Chart lookback (days)", 30, 365, 120)
         swing_min_pct = st.slider("Swing min % move", 3.0, 15.0, 5.0, 0.5)
         bulls_pct = st.number_input(
@@ -118,20 +145,21 @@ def render():
         sell_signals = check_all_sell_signals(tqqq, nasdaq, bulls_input)
         alert_level, alert_color, alert_action = compute_alert_level(sell_signals)
         triggered_count = sum(1 for s in sell_signals if s.triggered)
-        color_hex = {"green": "#4CAF50", "yellow": "#FFC107", "orange": "#FF9800", "red": "#F44336"}.get(alert_color, "#FFC107")
+        color_hex = {"green": "#17BF63", "yellow": "#FFAD1F", "orange": "#FF6F00", "red": "#E0245E"}.get(alert_color, "#FFAD1F")
 
         st.markdown(f"""<div style="
-            background: linear-gradient(135deg, {color_hex}18, {color_hex}08);
-            border: 1px solid {color_hex}44; border-left: 5px solid {color_hex};
-            padding: 18px 24px; border-radius: 10px; margin: 12px 0 20px 0;">
+            background: linear-gradient(135deg, {color_hex}15, {color_hex}08);
+            border: 1px solid {color_hex}33; border-left: 5px solid {color_hex};
+            padding: 18px 24px; border-radius: 12px; margin: 12px 0 20px 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <div>
-                    <span style="font-size: 1.5em; font-weight: 800; color: {color_hex};">
+                    <span style="font-size: 1.5em; font-weight: 800; color: {color_hex};
+                                 letter-spacing: -0.02em;">
                         {alert_level}</span>
-                    <span style="font-size: 0.95em; color: #aaa; margin-left: 12px;">
+                    <span style="font-size: 0.9em; color: #8899A6; margin-left: 12px;">
                         {triggered_count} of 9 sell signals active</span>
                 </div>
-                <div style="font-size: 0.95em; color: #ddd; margin-top: 4px;">{alert_action}</div>
+                <div style="font-size: 0.95em; color: #E7E9EA; margin-top: 4px;">{alert_action}</div>
             </div>
         </div>""", unsafe_allow_html=True)
 
@@ -159,18 +187,23 @@ def render():
         for i, sig in enumerate(sell_signals):
             with cols[i % 3]:
                 icon = SEVERITY_ICONS.get(sig.severity, "")
-                badge_bg = "#F44336" if sig.triggered else "#4CAF50"
-                card_border = "#F4434488" if sig.triggered else "#33333388"
-                card_bg = "rgba(244,67,54,0.06)" if sig.triggered else "transparent"
+                if sig.triggered:
+                    badge_bg = "#E0245E"
+                    card_border = "rgba(224,36,94,0.4)"
+                    card_bg = "rgba(224,36,94,0.06)"
+                else:
+                    badge_bg = "#17BF63"
+                    card_border = "rgba(56,68,77,0.6)"
+                    card_bg = "rgba(29,161,242,0.02)"
                 st.markdown(f"""<div style="border: 1px solid {card_border}; background: {card_bg};
-                    border-radius: 10px; padding: 14px; margin-bottom: 10px; min-height: 110px;">
-                    <div style="font-weight: 700; font-size: 0.88em; color: #ddd;">
+                    border-radius: 12px; padding: 14px; margin-bottom: 10px; min-height: 110px;">
+                    <div style="font-weight: 700; font-size: 0.88em; color: #E7E9EA;">
                         {icon} #{sig.rule_number} {sig.name}</div>
-                    <div style="font-size: 0.78em; color: #999; margin: 6px 0;">{sig.details}</div>
+                    <div style="font-size: 0.78em; color: #8899A6; margin: 6px 0;">{sig.details}</div>
                     <span style="background: {badge_bg}; color: white; padding: 2px 10px;
-                        border-radius: 4px; font-size: 0.72em; font-weight: 600;">
+                        border-radius: 20px; font-size: 0.72em; font-weight: 600;">
                         {'TRIGGERED' if sig.triggered else 'CLEAR'}</span>
-                    <span style="color: #666; font-size: 0.7em; margin-left: 6px;">
+                    <span style="color: #657786; font-size: 0.7em; margin-left: 6px;">
                         {sig.severity.upper()}</span>
                 </div>""", unsafe_allow_html=True)
 
@@ -501,5 +534,21 @@ confirmed, trending uptrends.""")
 """)
 
     # Footer
-    st.markdown("---")
-    st.caption("Data: Yahoo Finance (delayed) • Not financial advice • For educational purposes only")
+    st.markdown(f"""
+        <div style="border-top: 1px solid #38444D; margin-top: 40px; padding: 24px 0;
+                     text-align: center;">
+            <a href="{TWITTER_URL}" target="_blank" style="text-decoration: none;">
+                <img src="{LOGO_URL}" alt="MrZzz"
+                     style="width: 32px; height: 32px; border-radius: 50%;
+                            border: 1px solid #38444D; vertical-align: middle;">
+                <span style="color: #1DA1F2; font-weight: 600; margin-left: 8px;
+                              vertical-align: middle; font-size: 0.9em;">
+                    @MrZzz</span>
+            </a>
+            <p style="color: #657786; font-size: 0.78em; margin-top: 10px;">
+                Data: Yahoo Finance (delayed) &nbsp;&#183;&nbsp;
+                Not financial advice &nbsp;&#183;&nbsp;
+                For educational purposes only
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
