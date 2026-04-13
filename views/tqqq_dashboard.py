@@ -628,123 +628,149 @@ def render():
     with tab_how:
         st.markdown("## How the Trading System Works")
         st.markdown("""
-This is a **rules-based swing trading system** for TQQQ, the 3x leveraged
-Nasdaq 100 ETF. It captures **20-30% swings** that occur multiple times per year
-by timing entries at market turns and exiting incrementally as weakness appears.
+This system is **100% invested in TQQQ by default** during bull markets and exits
+to cash when conditions deteriorate. The philosophy: **ride all the ups, dodge the
+crashes.** Inspired by Vibha Jha's TQQQ swing trading approach, enhanced with
+quantitative signals.
 """)
 
-        st.markdown("### What is TQQQ?")
+        st.markdown("### The Core Idea")
         h1, h2 = st.columns(2)
         with h1:
             st.markdown(_styled_card(
                 "TQQQ = 3x Daily Nasdaq 100",
-                """TQQQ delivers <b>3x the daily return</b> of the Nasdaq 100 (QQQ).
-                If QQQ rises 1%, TQQQ rises ~3%. If QQQ falls 1%, TQQQ falls ~3%.
-                This amplification creates large swings — typically <b>20-30%</b> moves
-                multiple times per year — which is what this system trades."""
+                """TQQQ delivers <b>3x the daily return</b> of QQQ.
+                A 10% QQQ rally = ~30% TQQQ gain. But a 10% QQQ drop = ~30% TQQQ loss.
+                The system aims to be fully invested during rallies and in cash during drops.
+                Backtested: <b>$100K → $8.6M</b> over 16 years (2011-2026)."""
             ), unsafe_allow_html=True)
         with h2:
             st.markdown(_styled_card(
-                "Why Swing Trade, Not Buy & Hold?",
-                """TQQQ suffers from <b>volatility decay</b> in sideways or declining markets.
-                A buy-and-hold approach can lose money even when QQQ is flat. Active swing
-                trading avoids the decay by <b>exiting during pullbacks</b> and only holding
-                during confirmed uptrends. Best executed in <b>IRA/Roth accounts</b> for
-                tax-free compounding."""
+                "Why Not Just Buy & Hold?",
+                """TQQQ buy-and-hold lost <b>-79.7% in 2022</b>. Our system lost only -18%.
+                In a 3x leveraged ETF, avoiding the big crashes matters more than catching
+                every rally. Best executed in <b>IRA/Roth accounts</b> for tax-free compounding.
+                Idle cash earns ~4.5% in SGOV while waiting."""
             ), unsafe_allow_html=True)
 
-        st.markdown("### Buy Rules (Only 2)")
+        st.markdown("### Entry Rules")
         st.markdown("""
-| # | Signal | Description | Position Size |
-|---|--------|-------------|---------------|
-| 1 | **Follow-Through Day (FTD)** | After a market correction, on day 4+ of a rally attempt, the Nasdaq gains >1.25% on volume higher than the prior day. Highest-conviction entry. | Up to 100% in IRA |
-| 2 | **3 White Knights** | 3 consecutive days of higher highs AND higher lows on QQQ (not TQQQ). Earlier signal before an FTD is confirmed. | 25-75% based on conviction |
+The system uses **three entry signals**, all evaluated on QQQ/Nasdaq (not TQQQ):
+
+| # | Signal | When It Fires | Allocation |
+|---|--------|--------------|------------|
+| 1 | **Default Entry** | QQQ is above 200-day SMA + Weekly MACD positive | **100%** |
+| 2 | **Follow-Through Day (FTD)** | After a 7%+ Nasdaq correction, the Nasdaq gains 1.25%+ on higher volume on day 4+ of a rally attempt | **50-100%** (50% if below 200-day) |
+| 3 | **MACD Crossover** | Weekly MACD crosses above zero on QQQ after being negative | **100%** |
+
+**Key rules:**
+- FTD can enter **even below the 200-day SMA** — it's the one signal strong enough to catch market bottoms early
+- When QQQ is above 200-day but MACD is negative, the system holds at **50%** (cautious)
+- After an exit, re-entry requires either an FTD or MACD turning positive (no blind re-entry)
 """)
 
-        st.markdown("### Sell Rules (9 Signals)")
+        st.markdown("### Exit Rules")
         st.markdown("""
-Positions are trimmed in **10% chunks** as signals accumulate. More signals = more aggressive selling.
+The system has **three exit triggers**, designed to catch crashes early:
 
-| # | Signal | Severity | What It Means |
-|---|--------|----------|---------------|
-| 1 | New 52-week high | Watch | Potential resistance — stay alert |
-| 2 | New high on declining volume | Warning | Institutions aren't participating in the move up |
-| 3 | 4-5 distribution days | Warning/Sell | Heavy institutional selling in the broader market |
-| 4 | 3 consecutive down days | Warning | Short-term momentum shifting |
-| 5 | 10-day MA violated on rising volume | Sell | Short-term trend broken with conviction |
-| 6 | 3 down days + rising vol + lower H/L | Sell | Severe weakness pattern |
-| 7 | Triple rejection at resistance | Warning | Price can't break through — exhaustion |
-| 8 | Bulls vs Bears >60% | Watch | Sentiment too bullish — contrarian caution |
-| 9 | **2 closes below 21-day EMA** | **Full Exit** | **Nuclear sell signal — exit entire position** |
+| # | Exit Signal | Condition | Speed |
+|---|------------|-----------|-------|
+| 1 | **200-day SMA Break** | QQQ closes below its 200-day SMA for **2 consecutive days** | Primary exit — catches bear markets |
+| 2 | **12% Trailing Stop** | Portfolio drops 12% from its peak (only active when QQQ is >3% above 200-day) | Catches slow rollovers from bull market highs |
+| 3 | **Crash Detector** | TQQQ drops 30%+ in 10 trading days → blocks ALL entries for 40 days | Prevents re-entering during freefall (COVID, flash crashes) |
+
+**How exits work in practice:**
+- Evaluate signals at **market close** (4:00 PM ET)
+- Execute the trade in **after-hours** (4:00-8:00 PM ET) or at **next day's open**
+- After any exit, the system enters a **10-day cooldown** before considering re-entry
+- FTD can override the cooldown (it's a strong enough signal to re-enter early)
 """)
 
-        st.markdown("### Position Sizing & Risk Management")
-        st.markdown(_styled_card(
-            "How to Size TQQQ Positions",
-            """<b>On a Follow-Through Day:</b> Up to 100% of TQQQ allocation (in IRA accounts)<br>
-            <b>On 3 White Knights (no FTD yet):</b> Start at 25%, scale to 50-75% based on conviction<br>
-            <b>Selling:</b> Trim in 10% increments as sell signals fire — don't dump all at once<br>
-            <b>Hard stop:</b> If price undercuts the low of the rally attempt's first day, exit immediately<br>
-            <b>No adding:</b> Enter at the market turn, do not add to the position after entry<br>
-            <b>Target:</b> Capture 20%+ swings, then sell into strength as signals appear"""
-        ), unsafe_allow_html=True)
+        st.markdown("### Position Sizing")
+        st.markdown("""
+| Market Condition | QQQ Status | Weekly MACD | Allocation |
+|-----------------|------------|------------|------------|
+| **Strong Bull** | Above 200-day SMA | Positive | **100%** |
+| **Cautious Bull** | Above 200-day SMA | Negative | **50%** |
+| **FTD Below 200-day** | Below 200-day SMA | Any | **50%** (probe entry) |
+| **Bear Market** | Below 200-day SMA | No FTD | **0% (cash)** |
+
+Cash earns ~4.5% annualized in SGOV (short-term Treasuries) while waiting.
+""")
 
         st.markdown("### Key Concepts")
 
-        with st.expander("What is a Distribution Day?"):
-            st.markdown("""A distribution day occurs when a major index (Nasdaq or S&P 500) declines
-more than 0.2% on volume higher than the prior session. This indicates
-**institutional selling** — the big money is unloading shares. When 4-5
-distribution days cluster within a 25-session window, the market is under
-significant selling pressure and corrections often follow.
-
-Distribution days expire after 25 trading sessions or when the index rallies
-5% above the distribution day's close.""")
-
         with st.expander("What is a Follow-Through Day (FTD)?"):
-            st.markdown("""A Follow-Through Day is the primary signal that a new market uptrend
-is beginning after a correction:
+            st.markdown("""The primary signal that a new market uptrend is beginning after a correction.
 
-1. The market must first establish a **rally attempt** — the index makes
-   a low and begins moving higher
-2. On **day 4 or later** of the rally attempt, the Nasdaq must gain
-   **at least 1.25%** on volume **higher than the previous session**
+**Requirements:**
+1. The Nasdaq must have declined **7%+ from a recent high** (establishes a correction)
+2. A **rally attempt** begins (the index starts making higher closes from the low)
+3. On **day 4 or later** of the rally, the Nasdaq gains **at least 1.25%**
+4. Volume must be **higher than the previous session** (institutional buying)
 
-Not all FTDs succeed, but almost every major market rally has started with
-one. The system buys TQQQ aggressively on an FTD, with a stop-loss below
-the rally attempt's low.""")
+Not all FTDs succeed, but almost every major market rally has started with one.
+The system enters TQQQ on an FTD — even below the 200-day SMA — at 50% allocation
+as a probe. If the rally proves real, MACD will go positive and the system scales to 100%.""")
 
-        with st.expander("What is the 3 White Knights pattern?"):
-            st.markdown("""3 consecutive trading days where QQQ makes **both a higher high AND
-a higher low** compared to the previous day. This suggests the market is
-establishing a floor and beginning to trend upward.
+        with st.expander("What is the Weekly MACD?"):
+            st.markdown("""The **Moving Average Convergence Divergence (MACD)** on QQQ's weekly chart
+is the system's primary trend indicator.
 
-It's an earlier, lower-conviction entry used before an official FTD is
-confirmed. Position sizes are smaller (25-50%) compared to FTD entries.""")
+- **MACD = 12-week EMA minus 26-week EMA** of QQQ's closing price
+- When MACD is **above zero**: the intermediate-term trend is bullish → 100% invested
+- When MACD is **below zero**: the trend is bearish → reduce to 50% or exit
+
+The weekly timeframe filters out daily noise. The MACD only crosses zero
+**2-4 times per year**, capturing major trend changes while ignoring minor dips.
+This is why the system holds through normal 5-8% pullbacks without exiting.""")
+
+        with st.expander("What is the 200-day SMA?"):
+            st.markdown("""The **200-day Simple Moving Average** of QQQ is the dividing line between
+bull and bear markets.
+
+- **QQQ above 200-day**: Bull market — the system is invested
+- **QQQ below 200-day**: Bear market — the system is in cash
+
+Two consecutive closes below the 200-day confirms the transition. This is
+the system's **hard exit** — it doesn't wait for MACD or other signals.
+In 2022, this got the system out in January, avoiding the -79.7% TQQQ crash.""")
+
+        with st.expander("What is the 12% Trailing Stop?"):
+            st.markdown("""The trailing stop protects against **slow rollovers from bull market highs**
+— like the Nov 2021 → Jan 2022 decline where QQQ stayed above its 200-day
+while slowly grinding down.
+
+**How it works:**
+- Tracks the **portfolio's peak value** while in a position
+- If the portfolio drops **12% from that peak**, the system exits
+- Only active when QQQ is **>3% above its 200-day** (prevents firing in choppy markets near the 200-day)
+
+At 100% TQQQ allocation, a 12% portfolio drop ≈ 4% QQQ drop — which catches
+the start of corrections before they become crashes.""")
+
+        with st.expander("What is the Crash Detector?"):
+            st.markdown("""The crash detector prevents the system from re-entering during a **freefall**
+like COVID (March 2020) where TQQQ dropped 70%+ in weeks.
+
+**How it works:**
+- If TQQQ drops **30%+ in 10 trading days**, a crash is detected
+- ALL entries are **blocked for 40 days** — even FTD signals
+- This prevents the system from buying a bear market rally that gets crushed
+
+In COVID, this blocked the March 5 FTD that would have re-entered right before
+the final crash leg. The system waited until April, catching the real bottom.""")
 
         with st.expander("Why trade TQQQ in an IRA?"):
             st.markdown("""TQQQ swing trades generate frequent short-term capital gains. In a
-taxable account, these can be taxed at **35-50%+** (federal + state),
-significantly eroding returns. In an IRA or Roth IRA:
+taxable account, these can be taxed at **35-50%+** (federal + state).
 
 - **Traditional IRA:** Gains are tax-deferred until withdrawal
 - **Roth IRA:** Gains are **tax-free** forever
 
-This makes IRAs the ideal vehicle for frequent TQQQ swing trading — 100%
-of gains compound without tax drag.""")
-
-        with st.expander("What is volatility decay?"):
-            st.markdown("""Leveraged ETFs like TQQQ reset their leverage **daily**. In a volatile,
-sideways market, this daily reset erodes value even if the underlying index
-ends flat. Example:
-
-- Day 1: QQQ drops 5% → TQQQ drops 15% (from $100 to $85)
-- Day 2: QQQ rises 5.26% (back to even) → TQQQ rises 15.8% ($85 → $98.43)
-- **QQQ is flat, but TQQQ lost 1.6%**
-
-This is why buy-and-hold doesn't work with TQQQ in choppy markets. The
-system avoids decay by **exiting during pullbacks** and only holding during
-confirmed, trending uptrends.""")
+This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
+The system's 72 trades over 16 years would create significant tax liability
+in a taxable account.""")
 
     # ══════════════════════════════════════════════════════════════
     # TAB 3: HOW TO USE THIS SITE
@@ -957,7 +983,7 @@ confirmed, trending uptrends.""")
                                 "trigger": sell_trigger,
                                 "conditions": sell_conditions,
                                 "details": [
-                                    f"**Closed:** {t.exit_date} at market open (9:30 AM ET)",
+                                    f"**Closed:** {t.exit_date} in after-hours (4:00-8:00 PM ET)",
                                     f"**Sell price:** ${t.exit_price:.2f} (TQQQ)",
                                     f"**Entered:** {t.entry_date} at ${t.entry_price:.2f}",
                                     f"**Held:** {t.duration_days} days",
