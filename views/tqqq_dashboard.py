@@ -131,7 +131,7 @@ def render():
 
         REGIME_SHORT = {
             "Confirmed Uptrend": "Uptrend",
-            "Uptrend Under Pressure": "Under Pressure",
+            "Uptrend Under Pressure": "Caution",
             "Market in Correction": "Correction",
         }
         c1, c2, c3, c4 = st.columns(4)
@@ -139,10 +139,12 @@ def render():
         c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
         nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
-        c3.metric("Nasdaq", f"{REGIME_ICONS.get(nasdaq_regime.color, '')} {nq_short}",
-                   delta=f"{nasdaq_regime.dist_day_count} dist. days", delta_color="off")
-        c4.metric("S&P 500", f"{REGIME_ICONS.get(sp_regime.color, '')} {sp_short}",
-                   delta=f"{sp_regime.dist_day_count} dist. days", delta_color="off")
+        nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
+        sp_icon = REGIME_ICONS.get(sp_regime.color, '')
+        c3.metric("Nasdaq", f"{nq_icon} {nq_short}",
+                   delta=f"{nasdaq_regime.dist_day_count} dist days", delta_color="off")
+        c4.metric("S&P 500", f"{sp_icon} {sp_short}",
+                   delta=f"{sp_regime.dist_day_count} dist days", delta_color="off")
         st.caption(f"Data as of {data_date.strftime('%b %d, %Y')} · Yahoo Finance (delayed)")
 
         # Alert Bar
