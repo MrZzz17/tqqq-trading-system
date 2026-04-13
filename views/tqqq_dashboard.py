@@ -778,26 +778,98 @@ confirmed, trending uptrends.""")
                         ym1, ym2, ym3 = st.columns(3)
                         ym1.metric("Start", f"${r.starting_value:,.0f}")
                         ym2.metric("End", f"${r.ending_value:,.0f}")
-                        pnl = r.ending_value - r.starting_value
-                        ym3.metric("P&L", f"${pnl:+,.0f}", delta=f"{r.total_return_pct:+.1f}%")
+                        pnl_val = r.ending_value - r.starting_value
+                        ym3.metric("P&L", f"${pnl_val:+,.0f}", delta=f"{r.total_return_pct:+.1f}%")
 
-                        trade_rows = []
-                        for t in r.trades:
-                            trade_rows.append({
-                                "Entry": t.entry_date,
-                                "Exit": t.exit_date,
-                                "Signal": t.signal_type,
-                                "Days": t.duration_days,
-                                "Buy @": f"${t.entry_price:.2f}",
-                                "Sell @": f"${t.exit_price:.2f}",
-                                "Shares": f"{t.shares:,.0f}",
-                                "Deployed": f"${t.cash_deployed:,.0f}",
-                                "Return": f"{t.return_pct:+.1f}%",
-                                "Portfolio After": f"${t.portfolio_after:,.0f}",
-                                "Cash After": f"${t.cash_after:,.0f}",
-                                "Result": t.outcome,
-                            })
-                        st.dataframe(pd.DataFrame(trade_rows), use_container_width=True, hide_index=True)
+                        for ti, t in enumerate(r.trades):
+                            t_color = "#17BF63" if t.return_pct > 0 else "#E0245E"
+                            pct_deployed = t.cash_deployed / t.portfolio_before * 100 if t.portfolio_before > 0 else 0
+                            trade_pnl = t.portfolio_after - t.portfolio_before
+
+                            # Build entry explanation
+                            if t.signal_type == "FTD":
+                                entry_why = (
+                                    "**Follow-Through Day (FTD)** detected on the Nasdaq. "
+                                    "After a 7%+ correction, the Nasdaq gained 1.25%+ on higher volume "
+                                    "on day 4+ of the rally attempt. This is the highest-conviction "
+                                    "entry signal — the market is confirming a new uptrend."
+                                )
+                            elif t.signal_type == "MACD":
+                                entry_why = (
+                                    "**Weekly MACD turned positive** on QQQ. The 12-week EMA crossed "
+                                    "above the 26-week EMA, confirming the intermediate-term trend "
+                                    "has shifted bullish. QQQ was above its 200-day SMA."
+                                )
+                            elif t.signal_type == "Entry":
+                                entry_why = (
+                                    "**Standard entry**: QQQ was above its 200-day SMA. "
+                                    "The system defaults to being invested when QQQ is in an uptrend."
+                                )
+                            else:
+                                entry_why = f"**{t.signal_type}** signal triggered entry."
+
+                            alloc_why = (
+                                f"**{pct_deployed:.0f}% of portfolio** (${t.cash_deployed:,.0f}) deployed. "
+                            )
+                            if pct_deployed > 80:
+                                alloc_why += "Full conviction — MACD positive + QQQ above 200-day."
+                            elif pct_deployed > 40:
+                                alloc_why += "Half position — either MACD negative or FTD below 200-day (probe entry)."
+                            else:
+                                alloc_why += "Cautious — limited conviction in current conditions."
+
+                            # Build exit explanation
+                            if t.return_pct > 0:
+                                if t.duration_days > 100:
+                                    exit_why = (
+                                        "**200-day SMA exit**: QQQ closed below its 200-day SMA for "
+                                        "2 consecutive days, confirming the uptrend ended. The system "
+                                        "held through normal pullbacks using the wide exit."
+                                    )
+                                else:
+                                    exit_why = (
+                                        "**Trend exit**: The position was closed when exit conditions "
+                                        "were met (either QQQ broke below 200-day for 2 days, or the "
+                                        "12% trailing stop fired from a bull market peak)."
+                                    )
+                            else:
+                                if t.duration_days <= 3:
+                                    exit_why = (
+                                        "**Quick exit**: The entry signal failed almost immediately. "
+                                        "QQQ broke below the 200-day SMA within days of entry, or "
+                                        "the trailing stop triggered on a sharp reversal."
+                                    )
+                                elif t.duration_days <= 15:
+                                    exit_why = (
+                                        "**12% trailing stop** fired. The portfolio dropped 12% from "
+                                        "its recent peak while QQQ was >3% above the 200-day. "
+                                        "This protects against slow rollovers from bull market highs."
+                                    )
+                                else:
+                                    exit_why = (
+                                        "**200-day SMA exit**: QQQ closed below its 200-day SMA for "
+                                        "2 consecutive days. The market transitioned from bull to bear."
+                                    )
+
+                            with st.expander(
+                                f"{'🟢' if t.return_pct > 0 else '🔴'} "
+                                f"{t.entry_date} → {t.exit_date} · "
+                                f"{t.return_pct:+.1f}% · "
+                                f"${trade_pnl:+,.0f} · "
+                                f"{t.signal_type} · {t.duration_days}d"
+                            ):
+                                tc1, tc2 = st.columns(2)
+                                with tc1:
+                                    st.markdown("**Entry**")
+                                    st.markdown(entry_why)
+                                    st.markdown(alloc_why)
+                                    st.markdown(f"Bought **{t.shares:,.0f} shares** at **${t.entry_price:.2f}**")
+                                    st.markdown(f"Portfolio was **${t.portfolio_before:,.0f}**")
+                                with tc2:
+                                    st.markdown("**Exit**")
+                                    st.markdown(exit_why)
+                                    st.markdown(f"Sold at **${t.exit_price:.2f}** after **{t.duration_days} days**")
+                                    st.markdown(f"Portfolio after: **${t.portfolio_after:,.0f}** (${trade_pnl:+,.0f})")
 
                         st.markdown(
                             f"**Best:** {r.best_trade} · **Worst:** {r.worst_trade} · "
