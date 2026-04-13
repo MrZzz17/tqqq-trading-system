@@ -1,17 +1,13 @@
 """
 Historical backtest of the TQQQ swing trading system.
 
-Runs a CONTINUOUS multi-year simulation (no year-boundary resets) and slices
-the equity curve into annual returns.  This correctly models positions that
-span year-ends, which is critical for capturing long uptrend holds.
+Uses dollar-based portfolio accounting: tracks actual cash, shares held,
+and position value at every step.  Runs a CONTINUOUS multi-year simulation
+starting at $100,000 and slices the equity curve into annual returns.
 
-Key behavioral rules from Vibha Jha interviews / IBD Live:
-- Enter on FTD (all-in), 3WK (half position), or pullback-to-MA (half)
-- FTD counts TRADING DAYS from trough, not net-up days (IBD standard)
-- Hold for weeks/months; 21-EMA is the primary trailing stop
-- Sell signals are flags -- only nuclear (2 closes < 21-EMA) triggers full exit
-- In bear markets (TQQQ below 200-day), only enter on FTD -- no dip-buying
-- She maintains exposure almost continuously in bull markets
+Every trade logs a full portfolio snapshot so the dashboard can show exactly
+how much cash was deployed, how many shares were bought/sold, and the
+portfolio value before and after each action.
 """
 
 import datetime as dt
@@ -24,6 +20,9 @@ import streamlit as st
 import yfinance as yf
 
 
+STARTING_CAPITAL = 100_000.0
+
+
 @dataclass
 class Trade:
     entry_date: str
@@ -34,6 +33,11 @@ class Trade:
     signal_type: str
     duration_days: int
     outcome: str
+    shares: float
+    cash_deployed: float
+    portfolio_before: float
+    portfolio_after: float
+    cash_after: float
 
 
 @dataclass
@@ -51,6 +55,8 @@ class YearResult:
     tqqq_buy_hold_pct: float
     qqq_buy_hold_pct: float
     trades: List[Trade] = field(default_factory=list)
+    starting_value: float = 0.0
+    ending_value: float = 0.0
 
 
 # ── Data ──────────────────────────────────────────────────────────
@@ -91,7 +97,6 @@ COOLDOWN_BEAR = 7
 # ── Buy Signal Detection ─────────────────────────────────────────
 
 def _is_bull_regime(tqqq: pd.DataFrame, idx: int) -> bool:
-    """Bull = TQQQ above its 200-day SMA and the SMA is rising."""
     sma200 = tqqq.iloc[idx].get("SMA_200")
     if sma200 is None or pd.isna(sma200):
         return True
@@ -106,65 +111,40 @@ def _is_bull_regime(tqqq: pd.DataFrame, idx: int) -> bool:
 
 
 def _find_ftd_signal(nasdaq: pd.DataFrame, idx: int) -> bool:
-    """
-    Follow-Through Day: After a >= 7% Nasdaq decline, on trading day 4+
-    from the trough (counting ALL days, not net-up days), the Nasdaq gains
-    >= 1.25% on higher volume than the prior session.
-    """
     if idx < 50:
         return False
-
     window = nasdaq.iloc[max(0, idx - 60): idx + 1]
     closes = window["Close"].values
     volumes = window["Volume"].values
-
     peak_idx = np.argmax(closes)
     peak_val = closes[peak_idx]
-
     post_peak = closes[peak_idx:]
     if len(post_peak) < 5:
         return False
-
     trough_offset = np.argmin(post_peak)
     trough_val = post_peak[trough_offset]
     trough_abs_idx = peak_idx + trough_offset
-
     decline_pct = ((trough_val - peak_val) / peak_val) * 100
     if decline_pct > -MIN_CORRECTION_PCT:
         return False
-
     days_from_trough = len(window) - 1 - trough_abs_idx
     if days_from_trough < FTD_RALLY_DAY_MIN:
         return False
-
     last_i = len(window) - 1
-
     for i in range(trough_abs_idx + 1, last_i + 1):
         if closes[i] < trough_val:
             return False
-
     daily_gain = (closes[last_i] / closes[last_i - 1] - 1) * 100
     vol_higher = volumes[last_i] > volumes[last_i - 1]
-
     return daily_gain >= FTD_GAIN_MIN and vol_higher
 
 
 def _find_3wk_signal(qqq: pd.DataFrame, tqqq: pd.DataFrame, idx: int) -> bool:
-    """
-    3 White Knights: 3 consecutive days of higher highs AND higher lows on QQQ,
-    but only after TQQQ has pulled back >= 8% from its recent high.
-
-    Additional filter: either TQQQ is above its 200-day MA, or the 50-day SMA
-    must be rising (trending up). This prevents 3WK entries in deep bear markets
-    where bounces routinely fail.
-    """
     if idx < 50:
         return False
-
     qqq_slice = qqq.iloc[idx - 2: idx + 1]
     if len(qqq_slice) < 3:
         return False
-
     higher_highs = all(
         float(qqq_slice.iloc[j]["High"]) > float(qqq_slice.iloc[j - 1]["High"])
         for j in range(1, 3)
@@ -175,61 +155,40 @@ def _find_3wk_signal(qqq: pd.DataFrame, tqqq: pd.DataFrame, idx: int) -> bool:
     )
     if not (higher_highs and higher_lows):
         return False
-
     lookback = min(40, idx)
     recent_high = float(tqqq.iloc[idx - lookback: idx + 1]["High"].max())
     current_close = float(tqqq.iloc[idx]["Close"])
     pullback_pct = ((current_close - recent_high) / recent_high) * 100
-
     if pullback_pct > -PULLBACK_ENTRY_PCT:
         return False
-
     sma200 = tqqq.iloc[idx].get("SMA_200")
     above_200 = (sma200 is None or pd.isna(sma200) or current_close >= float(sma200))
-
     if above_200:
         return True
-
     sma50 = tqqq.iloc[idx].get("SMA_50")
     if sma50 and not pd.isna(sma50) and idx >= 10:
         sma50_prev = tqqq.iloc[idx - 10].get("SMA_50")
         if sma50_prev and not pd.isna(sma50_prev):
             if float(sma50) > float(sma50_prev):
                 return True
-
     return False
 
 
 def _find_pullback_entry(tqqq: pd.DataFrame, idx: int) -> bool:
-    """
-    Pullback entry (bull markets only): TQQQ has pulled back >= 8% from
-    its recent high and is now turning up near a key moving average.
-
-    Conditions:
-    1. TQQQ pulled back >= 8% from recent 30-day high
-    2. Current close > prior close (turning up)
-    3. Higher low vs 2 days ago
-    4. Price near or below the 50-day SMA or 21-EMA (not extended)
-    """
     if idx < 50:
         return False
-
     lookback = min(30, idx)
     recent_high = float(tqqq.iloc[idx - lookback: idx + 1]["High"].max())
     close = float(tqqq.iloc[idx]["Close"])
     prev_close = float(tqqq.iloc[idx - 1]["Close"])
     pullback_pct = ((close - recent_high) / recent_high) * 100
-
     if pullback_pct > -PULLBACK_ENTRY_PCT:
         return False
-
     if close <= prev_close:
         return False
-
     if idx >= 3:
         if float(tqqq.iloc[idx]["Low"]) <= float(tqqq.iloc[idx - 2]["Low"]):
             return False
-
     ema21 = tqqq.iloc[idx].get("EMA_21")
     sma50 = tqqq.iloc[idx].get("SMA_50")
     near_ma = False
@@ -239,34 +198,21 @@ def _find_pullback_entry(tqqq: pd.DataFrame, idx: int) -> bool:
     if ema21 and not pd.isna(ema21):
         if close <= float(ema21) * 1.03:
             near_ma = True
-
     return near_ma
 
 
 def _find_ma_retake_entry(tqqq: pd.DataFrame, idx: int) -> bool:
-    """
-    MA retake entry (bull markets only): TQQQ was below the 21-EMA
-    yesterday and closes above it today, signaling the pullback is over.
-
-    From her interview: "I try to get in after it has retaken the 10-week
-    or 50-day and the 50-day is starting to trend up."
-    """
     if idx < 50:
         return False
-
     ema21 = tqqq.iloc[idx].get("EMA_21")
     prev_ema21 = tqqq.iloc[idx - 1].get("EMA_21")
-
     if ema21 is None or pd.isna(ema21) or prev_ema21 is None or pd.isna(prev_ema21):
         return False
-
     close = float(tqqq.iloc[idx]["Close"])
     prev_close = float(tqqq.iloc[idx - 1]["Close"])
-
     crossed_above = prev_close < float(prev_ema21) and close > float(ema21)
     if not crossed_above:
         return False
-
     sma50 = tqqq.iloc[idx].get("SMA_50")
     if sma50 and not pd.isna(sma50):
         if idx >= 10:
@@ -274,7 +220,6 @@ def _find_ma_retake_entry(tqqq: pd.DataFrame, idx: int) -> bool:
             if sma50_prev and not pd.isna(sma50_prev):
                 if float(sma50) < float(sma50_prev):
                     return False
-
     lookback = min(20, idx)
     recent_high = float(tqqq.iloc[idx - lookback: idx + 1]["High"].max())
     dip_pct = ((close - recent_high) / recent_high) * 100
@@ -284,7 +229,6 @@ def _find_ma_retake_entry(tqqq: pd.DataFrame, idx: int) -> bool:
 # ── Sell Signal Detection ─────────────────────────────────────────
 
 def _check_nuclear_exit(tqqq: pd.DataFrame, idx: int) -> bool:
-    """2 consecutive closes below the 21-day EMA."""
     if idx < 2:
         return False
     row = tqqq.iloc[idx]
@@ -298,7 +242,6 @@ def _check_nuclear_exit(tqqq: pd.DataFrame, idx: int) -> bool:
 
 
 def _count_distribution_days(nasdaq: pd.DataFrame, idx: int) -> int:
-    """Count distribution days in the last 25 sessions."""
     if idx < 25:
         return 0
     window = nasdaq.iloc[idx - 24: idx + 1]
@@ -316,7 +259,6 @@ def _count_distribution_days(nasdaq: pd.DataFrame, idx: int) -> int:
 
 
 def _check_severe_weakness(tqqq: pd.DataFrame, idx: int) -> bool:
-    """3 consecutive down days + rising volume + lower highs & lows."""
     if idx < 3:
         return False
     return (
@@ -332,9 +274,6 @@ def _check_severe_weakness(tqqq: pd.DataFrame, idx: int) -> bool:
 
 def _evaluate_exit(tqqq: pd.DataFrame, nasdaq: pd.DataFrame, idx: int,
                    entry_price: float, entry_idx: int, rally_low: float) -> str:
-    """
-    Returns "full_exit", "trim_heavy", "trim_light", or "hold".
-    """
     held_days = idx - entry_idx
     close = float(tqqq.iloc[idx]["Close"])
 
@@ -361,10 +300,8 @@ def _evaluate_exit(tqqq: pd.DataFrame, nasdaq: pd.DataFrame, idx: int,
 
     if dist_days >= 5 and severe:
         return "full_exit"
-
     if dist_days >= 5 or severe:
         return "trim_heavy"
-
     if dist_days >= 4:
         sma10 = tqqq.iloc[idx].get("SMA_10")
         vol_avg = tqqq.iloc[idx].get("Vol_SMA_50")
@@ -377,13 +314,68 @@ def _evaluate_exit(tqqq: pd.DataFrame, nasdaq: pd.DataFrame, idx: int,
     return "hold"
 
 
+# ── Dollar-Based Portfolio ────────────────────────────────────────
+
+class Portfolio:
+    """Tracks actual cash and shares -- no abstract percentages."""
+
+    def __init__(self, starting_cash: float = STARTING_CAPITAL):
+        self.cash = starting_cash
+        self.shares = 0.0
+        self.entry_price = 0.0
+        self.signal_type = ""
+        self.entry_date = ""
+        self.entry_idx = 0
+        self.rally_low = 0.0
+        self.entry_shares = 0.0
+        self.entry_cash_deployed = 0.0
+        self.entry_portfolio_value = 0.0
+
+    @property
+    def in_position(self) -> bool:
+        return self.shares > 0
+
+    def total_value(self, current_price: float) -> float:
+        return self.cash + self.shares * current_price
+
+    def buy(self, price: float, allocation: float, date: str,
+            signal: str, idx: int, rally_low: float):
+        """Buy TQQQ with `allocation` fraction (0-1) of total portfolio."""
+        total = self.total_value(price)
+        cash_to_deploy = total * allocation
+        cash_to_deploy = min(cash_to_deploy, self.cash)
+        if cash_to_deploy <= 0:
+            return
+        self.entry_portfolio_value = total
+        self.shares = cash_to_deploy / price
+        self.cash -= cash_to_deploy
+        self.entry_price = price
+        self.entry_date = date
+        self.entry_idx = idx
+        self.signal_type = signal
+        self.rally_low = rally_low
+        self.entry_shares = self.shares
+        self.entry_cash_deployed = cash_to_deploy
+
+    def sell_all(self, price: float) -> float:
+        """Sell entire position. Returns cash received."""
+        proceeds = self.shares * price
+        self.cash += proceeds
+        self.shares = 0.0
+        return proceeds
+
+    def trim(self, price: float, fraction: float) -> float:
+        """Sell `fraction` of shares. Returns cash received."""
+        shares_to_sell = self.shares * fraction
+        proceeds = shares_to_sell * price
+        self.cash += proceeds
+        self.shares -= shares_to_sell
+        return proceeds
+
+
 # ── Continuous Multi-Year Backtest ────────────────────────────────
 
 def _run_continuous(start_year: int, end_year: int):
-    """
-    Run a single continuous simulation from start_year to end_year.
-    Returns (equity_by_date, trades_by_year, tqqq_df, qqq_df).
-    """
     fetch_start = f"{start_year - 1}-01-01"
     end_dt = min(dt.date(end_year, 12, 31), dt.date.today())
     fetch_end = end_dt.strftime("%Y-%m-%d")
@@ -406,45 +398,43 @@ def _run_continuous(start_year: int, end_year: int):
     if not sim_indices:
         return {}, {}, tqqq_df, qqq_df
 
-    in_position = False
-    position_size = 0.0
-    entry_price = 0.0
-    entry_date = ""
-    entry_idx = 0
-    signal_type = ""
+    pf = Portfolio(STARTING_CAPITAL)
     cooldown_until = 0
-    rally_low = 0.0
 
-    portfolio = 100.0
     equity_by_date: Dict[pd.Timestamp, float] = {}
     trades_by_year: Dict[int, List[Trade]] = {}
-
     for year in range(start_year, end_year + 1):
         trades_by_year[year] = []
 
-    def _record_trade(exit_date_ts, exit_price, ret, sig, held, year_key):
-        t = Trade(
-            entry_date=entry_date,
+    def _make_trade(exit_date_ts, exit_price):
+        ret_pct = ((exit_price - pf.entry_price) / pf.entry_price) * 100
+        return Trade(
+            entry_date=pf.entry_date,
             exit_date=exit_date_ts.strftime("%Y-%m-%d"),
-            entry_price=round(entry_price, 2),
+            entry_price=round(pf.entry_price, 2),
             exit_price=round(exit_price, 2),
-            return_pct=round(ret, 2),
-            signal_type=sig,
-            duration_days=held,
-            outcome="Win" if ret > 0 else "Loss",
+            return_pct=round(ret_pct, 2),
+            signal_type=pf.signal_type,
+            duration_days=0,
+            outcome="Win" if ret_pct > 0 else "Loss",
+            shares=round(pf.entry_shares, 2),
+            cash_deployed=round(pf.entry_cash_deployed, 2),
+            portfolio_before=round(pf.entry_portfolio_value, 2),
+            portfolio_after=0.0,
+            cash_after=0.0,
         )
-        trades_by_year.setdefault(year_key, []).append(t)
 
     for idx in sim_indices:
         date = all_idx[idx]
         current_year = date.year
+        price = float(tqqq_df.iloc[idx]["Close"])
 
         nq_idx = nasdaq_df.index.get_indexer([date], method="nearest")[0]
         qq_idx = qqq_df.index.get_indexer([date], method="nearest")[0]
 
-        if not in_position:
+        if not pf.in_position:
             if idx < cooldown_until:
-                equity_by_date[date] = portfolio
+                equity_by_date[date] = pf.total_value(price)
                 continue
 
             bull = _is_bull_regime(tqqq_df, idx)
@@ -453,123 +443,75 @@ def _run_continuous(start_year: int, end_year: int):
             is_pullback = bull and _find_pullback_entry(tqqq_df, idx)
             is_ma_retake = bull and _find_ma_retake_entry(tqqq_df, idx)
 
-            entered = False
+            alloc = 0.0
+            signal = ""
             if is_ftd:
-                position_size = 1.0
-                signal_type = "FTD"
-                entered = True
+                alloc, signal = 1.0, "FTD"
             elif is_3wk:
-                position_size = 0.5
-                signal_type = "3WK"
-                entered = True
+                alloc, signal = 0.5, "3WK"
             elif is_pullback:
-                position_size = 0.5
-                signal_type = "Pullback"
-                entered = True
+                alloc, signal = 0.5, "Pullback"
             elif is_ma_retake:
-                position_size = 0.5
-                signal_type = "MA Retake"
-                entered = True
+                alloc, signal = 0.5, "MA Retake"
 
-            if entered:
-                in_position = True
-                entry_price = float(tqqq_df.iloc[idx]["Close"])
-                entry_date = date.strftime("%Y-%m-%d")
-                entry_idx = idx
+            if alloc > 0:
                 lookback = min(20, idx)
-                rally_low = float(tqqq_df.iloc[idx - lookback: idx + 1]["Low"].min())
-
-            equity_by_date[date] = portfolio
+                r_low = float(tqqq_df.iloc[idx - lookback: idx + 1]["Low"].min())
+                pf.buy(price, alloc, date.strftime("%Y-%m-%d"),
+                       signal, idx, r_low)
 
         else:
             action = _evaluate_exit(tqqq_df, nasdaq_df, idx,
-                                    entry_price, entry_idx, rally_low)
-            current_price = float(tqqq_df.iloc[idx]["Close"])
-            ret_pct = ((current_price - entry_price) / entry_price) * 100
-            held_days = idx - entry_idx
+                                    pf.entry_price, pf.entry_idx, pf.rally_low)
+            held_days = idx - pf.entry_idx
 
             if action == "full_exit":
-                actual_ret = ret_pct * position_size
-                portfolio *= (1 + actual_ret / 100)
-                _record_trade(date, current_price, ret_pct, signal_type, held_days, current_year)
-                in_position = False
+                t = _make_trade(date, price)
+                t.duration_days = held_days
+                pf.sell_all(price)
+                t.portfolio_after = round(pf.total_value(price), 2)
+                t.cash_after = round(pf.cash, 2)
+                trades_by_year.setdefault(current_year, []).append(t)
                 bull = _is_bull_regime(tqqq_df, idx)
                 cooldown_until = idx + (COOLDOWN_BULL if bull else COOLDOWN_BEAR)
-                equity_by_date[date] = portfolio
 
-            elif action == "trim_heavy":
-                trim = 0.4
-                trimmed_ret = ret_pct * trim * position_size
-                portfolio *= (1 + trimmed_ret / 100)
-                position_size *= (1 - trim)
-                if position_size < 0.15:
-                    remainder_ret = ret_pct * position_size
-                    portfolio *= (1 + remainder_ret / 100)
-                    _record_trade(date, current_price, ret_pct, signal_type, held_days, current_year)
-                    in_position = False
+            elif action in ("trim_heavy", "trim_light"):
+                trim_frac = 0.4 if action == "trim_heavy" else 0.2
+                pf.trim(price, trim_frac)
+                if pf.shares * price < pf.total_value(price) * 0.10:
+                    t = _make_trade(date, price)
+                    t.duration_days = held_days
+                    pf.sell_all(price)
+                    t.portfolio_after = round(pf.total_value(price), 2)
+                    t.cash_after = round(pf.cash, 2)
+                    trades_by_year.setdefault(current_year, []).append(t)
                     cooldown_until = idx + COOLDOWN_BULL
-                    equity_by_date[date] = portfolio
-                else:
-                    unrealized = ((current_price - entry_price) / entry_price) * position_size * 100
-                    equity_by_date[date] = portfolio * (1 + unrealized / 100)
 
-            elif action == "trim_light":
-                trim = 0.2
-                trimmed_ret = ret_pct * trim * position_size
-                portfolio *= (1 + trimmed_ret / 100)
-                position_size *= (1 - trim)
-                if position_size < 0.15:
-                    remainder_ret = ret_pct * position_size
-                    portfolio *= (1 + remainder_ret / 100)
-                    _record_trade(date, current_price, ret_pct, signal_type, held_days, current_year)
-                    in_position = False
-                    cooldown_until = idx + COOLDOWN_BULL
-                    equity_by_date[date] = portfolio
-                else:
-                    unrealized = ((current_price - entry_price) / entry_price) * position_size * 100
-                    equity_by_date[date] = portfolio * (1 + unrealized / 100)
+        equity_by_date[date] = pf.total_value(price)
 
-            else:
-                unrealized = ((current_price - entry_price) / entry_price) * position_size * 100
-                equity_by_date[date] = portfolio * (1 + unrealized / 100)
-
-    if in_position:
+    if pf.in_position:
         last_date = all_idx[sim_indices[-1]]
-        current_price = float(tqqq_df.iloc[sim_indices[-1]]["Close"])
-        ret_pct = ((current_price - entry_price) / entry_price) * 100
-        actual_ret = ret_pct * position_size
-        portfolio *= (1 + actual_ret / 100)
-        held_days = sim_indices[-1] - entry_idx
-        _record_trade(last_date, current_price, ret_pct, signal_type,
-                      max(held_days, 1), last_date.year)
-        equity_by_date[last_date] = portfolio
+        price = float(tqqq_df.iloc[sim_indices[-1]]["Close"])
+        held_days = sim_indices[-1] - pf.entry_idx
+        t = _make_trade(last_date, price)
+        t.duration_days = max(held_days, 1)
+        pf.sell_all(price)
+        t.portfolio_after = round(pf.total_value(price), 2)
+        t.cash_after = round(pf.cash, 2)
+        trades_by_year.setdefault(last_date.year, []).append(t)
+        equity_by_date[last_date] = pf.total_value(price)
 
     return equity_by_date, trades_by_year, tqqq_df, qqq_df
-
-
-def run_backtest_year(year: int) -> Optional[YearResult]:
-    """Run a single-year backtest (standalone, no carryover)."""
-    result = _run_continuous(year, year)
-    equity, trades_by_year, tqqq_df, qqq_df = result
-    if not equity:
-        return None
-    return _build_year_result(year, equity, trades_by_year.get(year, []), tqqq_df, qqq_df)
 
 
 def _build_year_result(year: int, equity: Dict, trades: List[Trade],
                        tqqq_df: pd.DataFrame, qqq_df: pd.DataFrame) -> Optional[YearResult]:
     year_start = f"{year}-01-01"
-    tqqq_year = tqqq_df[tqqq_df.index >= year_start]
-    qqq_year = qqq_df[qqq_df.index >= year_start]
-
-    if tqqq_year.empty or qqq_year.empty:
-        return None
-
     year_end = f"{year + 1}-01-01"
-    tqqq_year = tqqq_year[tqqq_year.index < year_end]
-    qqq_year = qqq_year[qqq_year.index < year_end]
+    tqqq_year = tqqq_df[(tqqq_df.index >= year_start) & (tqqq_df.index < year_end)]
+    qqq_year = qqq_df[(qqq_df.index >= year_start) & (qqq_df.index < year_end)]
 
-    if len(tqqq_year) < 5:
+    if tqqq_year.empty or qqq_year.empty or len(tqqq_year) < 5:
         return None
 
     tqqq_bh = (float(tqqq_year["Close"].iloc[-1]) / float(tqqq_year["Close"].iloc[0]) - 1) * 100
@@ -577,7 +519,6 @@ def _build_year_result(year: int, equity: Dict, trades: List[Trade],
 
     year_equity = {d: v for d, v in equity.items()
                    if d >= pd.Timestamp(year_start) and d < pd.Timestamp(year_end)}
-
     if not year_equity:
         return None
 
@@ -608,17 +549,25 @@ def _build_year_result(year: int, equity: Dict, trades: List[Trade],
         tqqq_buy_hold_pct=round(tqqq_bh, 2),
         qqq_buy_hold_pct=round(qqq_bh, 2),
         trades=trades,
+        starting_value=round(start_val, 2),
+        ending_value=round(end_val, 2),
     )
 
 
+def run_backtest_year(year: int) -> Optional[YearResult]:
+    result = _run_continuous(year, year)
+    equity, trades_by_year, tqqq_df, qqq_df = result
+    if not equity:
+        return None
+    return _build_year_result(year, equity, trades_by_year.get(year, []), tqqq_df, qqq_df)
+
+
 def run_all_backtests() -> List[YearResult]:
-    """Run a continuous simulation across all years and return per-year results."""
     current_year = dt.date.today().year
     start_year = 2022
     end_year = current_year
 
     equity, trades_by_year, tqqq_df, qqq_df = _run_continuous(start_year, end_year)
-
     if not equity:
         return []
 
@@ -627,5 +576,4 @@ def run_all_backtests() -> List[YearResult]:
         r = _build_year_result(year, equity, trades_by_year.get(year, []), tqqq_df, qqq_df)
         if r:
             results.append(r)
-
     return results

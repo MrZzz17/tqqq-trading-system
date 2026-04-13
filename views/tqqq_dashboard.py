@@ -19,7 +19,7 @@ from core.signals import (
 )
 from core.swing_tracker import detect_swings, current_swing_stats, swing_summary_stats
 from core.charts import build_tqqq_chart, build_distribution_chart
-from core.backtest import run_all_backtests
+from core.backtest import run_all_backtests, STARTING_CAPITAL
 import config
 
 
@@ -480,44 +480,59 @@ confirmed, trending uptrends.""")
             st.markdown("### Year-by-Year Summary")
             st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
-            # Key insight
-            total_system = 100
-            total_bh = 100
-            for r in results:
-                total_system *= (1 + r.total_return_pct / 100)
-                total_bh *= (1 + r.tqqq_buy_hold_pct / 100)
-            cumulative_system = total_system - 100
-            cumulative_bh = total_bh - 100
+            # Key metrics
             total_trades = sum(r.num_trades for r in results)
             overall_wr = sum(r.win_rate_pct * r.num_trades for r in results if r.num_trades > 0) / max(total_trades, 1)
+            start_val = results[0].starting_value if results else STARTING_CAPITAL
+            end_val = results[-1].ending_value if results else STARTING_CAPITAL
+            cumulative_pct = ((end_val / start_val) - 1) * 100 if start_val > 0 else 0
 
             ic1, ic2, ic3, ic4 = st.columns(4)
-            ic1.metric("Cumulative Return", f"{cumulative_system:+.1f}%")
-            ic2.metric("vs TQQQ B&H", f"{cumulative_bh:+.1f}%")
-            ic3.metric("Total Trades", total_trades)
-            ic4.metric("Avg Win Rate", f"{overall_wr:.0f}%")
+            ic1.metric("Starting Capital", f"${start_val:,.0f}")
+            ic2.metric("Current Value", f"${end_val:,.0f}")
+            ic3.metric("Total Return", f"{cumulative_pct:+.1f}%")
+            ic4.metric(f"Trades ({total_trades})", f"{overall_wr:.0f}% Win Rate")
 
-            # Per-year trade details
-            st.markdown("### Trade Details by Year")
+            # Per-year portfolio trace
+            st.markdown("### Portfolio Trace by Year")
             for r in results:
                 label = f"{r.year} YTD" if r.year == current_year else str(r.year)
-                with st.expander(f"{label} — {r.total_return_pct:+.1f}% ({r.num_trades} trades, {r.win_rate_pct:.0f}% win rate)"):
+                color = "#17BF63" if r.total_return_pct > 0 else "#E0245E"
+                with st.expander(
+                    f"{label} — {r.total_return_pct:+.1f}% · "
+                    f"${r.starting_value:,.0f} → ${r.ending_value:,.0f} · "
+                    f"{r.num_trades} trades · {r.win_rate_pct:.0f}% WR"
+                ):
                     if r.trades:
-                        trade_rows = [{
-                            "Entry": t.entry_date,
-                            "Exit": t.exit_date,
-                            "Signal": t.signal_type,
-                            "Entry $": f"${t.entry_price:.2f}",
-                            "Exit $": f"${t.exit_price:.2f}",
-                            "Return": f"{t.return_pct:+.1f}%",
-                            "Days": t.duration_days,
-                            "Result": t.outcome,
-                        } for t in r.trades]
+                        ym1, ym2, ym3 = st.columns(3)
+                        ym1.metric("Start", f"${r.starting_value:,.0f}")
+                        ym2.metric("End", f"${r.ending_value:,.0f}")
+                        pnl = r.ending_value - r.starting_value
+                        ym3.metric("P&L", f"${pnl:+,.0f}", delta=f"{r.total_return_pct:+.1f}%")
+
+                        trade_rows = []
+                        for t in r.trades:
+                            trade_rows.append({
+                                "Entry": t.entry_date,
+                                "Exit": t.exit_date,
+                                "Signal": t.signal_type,
+                                "Days": t.duration_days,
+                                "Buy @": f"${t.entry_price:.2f}",
+                                "Sell @": f"${t.exit_price:.2f}",
+                                "Shares": f"{t.shares:,.0f}",
+                                "Deployed": f"${t.cash_deployed:,.0f}",
+                                "Return": f"{t.return_pct:+.1f}%",
+                                "Portfolio After": f"${t.portfolio_after:,.0f}",
+                                "Cash After": f"${t.cash_after:,.0f}",
+                                "Result": t.outcome,
+                            })
                         st.dataframe(pd.DataFrame(trade_rows), use_container_width=True, hide_index=True)
 
-                        mc1, mc2 = st.columns(2)
-                        mc1.markdown(f"**Best trade:** {r.best_trade}")
-                        mc2.markdown(f"**Worst trade:** {r.worst_trade}")
+                        st.markdown(
+                            f"**Best:** {r.best_trade} · **Worst:** {r.worst_trade} · "
+                            f"**TQQQ B&H:** {r.tqqq_buy_hold_pct:+.1f}% · "
+                            f"**QQQ B&H:** {r.qqq_buy_hold_pct:+.1f}%"
+                        )
                     else:
                         st.info("No trades generated for this period.")
 
