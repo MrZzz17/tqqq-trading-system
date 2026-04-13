@@ -1044,9 +1044,9 @@ in a taxable account.""")
                                 "type": "SELL",
                                 "date": t.exit_date,
                                 "icon": "🔴" if t.return_pct <= 0 else "🟢",
-                                "title": f"SELL {t.exit_date} — {sell_trigger.split('—')[0].strip()}",
                                 "trigger": sell_trigger,
                                 "conditions": sell_conditions,
+                                "ret": t.return_pct,
                                 "details": [
                                     f"**Closed:** {t.exit_date} in after-hours (4:00-8:00 PM ET)",
                                     f"**Sell price:** ${t.exit_price:.2f} (TQQQ)",
@@ -1062,8 +1062,8 @@ in a taxable account.""")
                         # Render each event as its own expander
                         for ev in events:
                             badge = "BUY" if ev["type"] == "BUY" else "SELL"
-                            badge_color = "#1DA1F2" if ev["type"] == "BUY" else (ev.get("color", "#E0245E"))
-                            with st.expander(f"{ev['icon']} **{badge}** · {ev['date']} · {ev['trigger']}"):
+                            ret_label = f" · **{ev['ret']:+.1f}%**" if "ret" in ev else ""
+                            with st.expander(f"{ev['icon']} **{badge}** · {ev['date']} · {ev['trigger']}{ret_label}"):
                                 st.markdown(f"**Trigger:** {ev['trigger']}")
                                 st.markdown("**Conditions met:**")
                                 for c in ev["conditions"]:
