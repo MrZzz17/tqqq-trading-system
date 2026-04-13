@@ -42,7 +42,7 @@ def fetch_weekly(ticker: str, period: str = "2y") -> pd.DataFrame:
 
 
 def add_moving_averages(df: pd.DataFrame) -> pd.DataFrame:
-    """Add SMA and EMA columns used by Vibha's system."""
+    """Add SMA and EMA columns used by the trading system."""
     df = df.copy()
     df["SMA_10"] = df["Close"].rolling(window=config.MA_10).mean()
     df["EMA_21"] = df["Close"].ewm(span=config.MA_21, adjust=False).mean()

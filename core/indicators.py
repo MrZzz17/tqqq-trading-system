@@ -1,6 +1,6 @@
 """
 Distribution day counter and market regime detection.
-Implements IBD-style distribution day logic used in Vibha's system.
+Implements IBD-style distribution day logic.
 """
 
 import pandas as pd

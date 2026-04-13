@@ -1,22 +1,22 @@
-# Vibha Jha Trading System
+# TQQQ Trading System
 
-A trading dashboard implementing Vibha Jha's hybrid CAN SLIM + TQQQ swing trading system — the strategy that earned her consistent top finishes in the U.S. Investing Championship (100% in 2021, 70% in 2023, 78% in 2024).
+A rules-based TQQQ swing trading dashboard combining CAN SLIM stock screening with leveraged ETF swing trading.
 
 ## Quick Start
 
 ```bash
-cd vibha-trading-system
+cd tqqq-trading-system
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
 ## Phase 1: TQQQ Dashboard (Current)
 
-- **Market Status Panel** — Distribution day counter for Nasdaq and S&P 500 with regime detection (Confirmed Uptrend / Under Pressure / Correction)
+- **Market Status Panel** — Distribution day counter for Nasdaq and S&P 500 with regime detection
 - **Buy Signal Detection** — Follow-Through Day and 3 White Knights automatic detection
-- **Sell Signal Scoreboard** — All 9 of Vibha's sell rules with live triggered/clear status
+- **Sell Signal Scoreboard** — All 9 sell rules with live triggered/clear status
 - **Alert System** — Green/Yellow/Orange/Red alert level with suggested action
-- **Swing Tracker** — Automated peak/trough detection with % moves and durations (replaces Vibha's manual spreadsheet)
+- **Swing Tracker** — Automated peak/trough detection with % moves and durations
 - **Interactive Charts** — Candlestick chart with 10/21/50/200-day MAs and volume
 
 ## Phase 2: Stock Screener (Planned)

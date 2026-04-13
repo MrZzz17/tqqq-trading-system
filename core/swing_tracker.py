@@ -1,5 +1,5 @@
 """
-TQQQ Swing Tracker -- replicates Vibha's spreadsheet.
+TQQQ Swing Tracker.
 Automatically detects peaks and troughs, calculates % moves and durations.
 """
 
@@ -29,7 +29,7 @@ def detect_swings(
 ) -> List[SwingPoint]:
     """
     Detect peaks and troughs using a zig-zag algorithm with a minimum
-    percentage threshold. Mirrors Vibha's manual tracking process.
+    percentage threshold.
     """
     if len(df) < 10:
         return []

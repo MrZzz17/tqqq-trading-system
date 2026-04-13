@@ -1,6 +1,6 @@
 """
 TQQQ Swing Trading Dashboard -- Phase 1
-Implements Vibha Jha's complete TQQQ buy/sell signal system.
+Rules-based TQQQ buy/sell signal system.
 """
 
 import datetime as dt
@@ -28,7 +28,7 @@ REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 def render():
     st.title("TQQQ Swing Trading Dashboard")
-    st.caption("Based on Vibha Jha's rules-based system | US Investing Championship top performer")
+    st.caption("Rules-based swing trading system | CAN SLIM + leveraged ETF strategy")
 
     with st.spinner("Fetching market data..."):
         tqqq = get_tqqq_data()
@@ -130,7 +130,7 @@ def render():
 
     # ── Sell Signal Scoreboard ──
     st.markdown("## Sell Signal Scoreboard")
-    st.caption("Vibha sells TQQQ in 10% chunks as signals stack up. More signals = more aggressive trimming.")
+    st.caption("Sell TQQQ in 10% chunks as signals stack up. More signals = more aggressive trimming.")
 
     sell_cols = st.columns(3)
     for i, signal in enumerate(sell_signals):
@@ -188,7 +188,7 @@ def render():
 
     # ── Swing Tracker ──
     st.markdown("## Swing Tracker")
-    st.caption("Automated version of Vibha's spreadsheet -- peaks, troughs, % moves, and durations.")
+    st.caption("Automated peak/trough detection -- % moves, durations, and MA relationships.")
 
     current_year_swings = detect_swings(tqqq, min_move_pct=swing_min_pct, year_filter=year_now)
     all_swings = detect_swings(tqqq, min_move_pct=swing_min_pct)
@@ -274,7 +274,7 @@ def render():
             st.success("No distribution days in the last 25 sessions.")
 
     # ── Quick Reference ──
-    with st.expander("📋 Vibha Jha's TQQQ Rules -- Quick Reference"):
+    with st.expander("📋 TQQQ Rules -- Quick Reference"):
         st.markdown("""
 **BUY RULES (only 2):**
 1. **Follow-Through Day** -- All-in on TQQQ. Stop if price undercuts the rally day low.

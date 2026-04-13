@@ -1,6 +1,6 @@
 """
 TQQQ buy and sell signal detection.
-Implements Vibha Jha's exact buy (2 rules) and sell (9 rules) checklist.
+Implements the 2 buy rules and 9 sell rules checklist.
 """
 
 import pandas as pd
@@ -70,7 +70,7 @@ def detect_follow_through_day(nasdaq_df: pd.DataFrame, lookback: int = 30) -> Op
 def detect_three_white_knights(qqq_df: pd.DataFrame) -> Optional[BuySignal]:
     """
     Detect 3 consecutive days of higher highs AND higher lows on QQQ.
-    Vibha uses QQQ (not TQQQ) for this signal.
+    Uses QQQ (not TQQQ) for this signal.
     """
     if len(qqq_df) < 5:
         return None
@@ -119,7 +119,7 @@ def check_all_sell_signals(
     nasdaq_df: pd.DataFrame,
     bulls_pct: Optional[float] = None,
 ) -> List[SellSignal]:
-    """Run all 9 of Vibha's TQQQ sell rules and return their status."""
+    """Run all 9 TQQQ sell rules and return their status."""
     signals = []
     latest = tqqq_df.iloc[-1]
     prev = tqqq_df.iloc[-2] if len(tqqq_df) >= 2 else latest

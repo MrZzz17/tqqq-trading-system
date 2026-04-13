@@ -1,6 +1,6 @@
 """
-Configuration constants for Vibha Jha's trading system.
-All thresholds derived from her publicly shared rules.
+Configuration constants for the TQQQ Trading System.
+Thresholds derived from CAN SLIM methodology and rules-based swing trading.
 """
 
 # --- Tickers ---
