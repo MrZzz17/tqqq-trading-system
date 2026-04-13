@@ -192,56 +192,81 @@ def _find_3wk_signal(qqq: pd.DataFrame, tqqq: pd.DataFrame, idx: int) -> bool:
     return False
 
 
-def _find_pullback_entry(tqqq: pd.DataFrame, idx: int) -> bool:
-    if idx < 50:
+PULLBACK_BULL_QQQ_PCT = 3.0
+PULLBACK_BEAR_QQQ_PCT = 5.0
+
+
+def _find_pullback_entry(qqq: pd.DataFrame, qq_idx: int) -> bool:
+    """
+    Detect pullback on QQQ (not TQQQ) since QQQ's price action is clean
+    and not distorted by 3x leverage. In a confirmed bull, a 3% QQQ dip
+    is meaningful (~9% TQQQ). In uncertain markets, require 5% (~15% TQQQ).
+    """
+    if qq_idx < 50:
         return False
-    lookback = min(30, idx)
-    recent_high = float(tqqq.iloc[idx - lookback: idx + 1]["High"].max())
-    close = float(tqqq.iloc[idx]["Close"])
-    prev_close = float(tqqq.iloc[idx - 1]["Close"])
-    pullback_pct = ((close - recent_high) / recent_high) * 100
-    if pullback_pct > -PULLBACK_ENTRY_PCT:
-        return False
+
+    close = float(qqq.iloc[qq_idx]["Close"])
+    prev_close = float(qqq.iloc[qq_idx - 1]["Close"])
+
     if close <= prev_close:
         return False
-    if idx >= 3:
-        if float(tqqq.iloc[idx]["Low"]) <= float(tqqq.iloc[idx - 2]["Low"]):
+    if qq_idx >= 3:
+        if float(qqq.iloc[qq_idx]["Low"]) <= float(qqq.iloc[qq_idx - 2]["Low"]):
             return False
-    ema21 = tqqq.iloc[idx].get("EMA_21")
-    sma50 = tqqq.iloc[idx].get("SMA_50")
-    near_ma = False
-    if sma50 and not pd.isna(sma50):
-        if close <= float(sma50) * 1.05:
-            near_ma = True
-    if ema21 and not pd.isna(ema21):
-        if close <= float(ema21) * 1.03:
-            near_ma = True
-    return near_ma
+
+    confirmed_bull = _is_confirmed_bull(qqq, qq_idx)
+
+    if confirmed_bull:
+        lookback = min(20, qq_idx)
+        recent_high = float(qqq.iloc[qq_idx - lookback: qq_idx + 1]["High"].max())
+        recent_low = float(qqq.iloc[max(0, qq_idx - 3): qq_idx + 1]["Low"].min())
+        dip_from_high = ((recent_low - recent_high) / recent_high) * 100
+        return dip_from_high <= -PULLBACK_BULL_QQQ_PCT
+    else:
+        lookback = min(30, qq_idx)
+        recent_high = float(qqq.iloc[qq_idx - lookback: qq_idx + 1]["High"].max())
+        pullback_pct = ((close - recent_high) / recent_high) * 100
+        if pullback_pct > -PULLBACK_BEAR_QQQ_PCT:
+            return False
+        ema21 = qqq.iloc[qq_idx].get("EMA_21")
+        sma50 = qqq.iloc[qq_idx].get("SMA_50")
+        near_ma = False
+        if sma50 and not pd.isna(sma50):
+            if close <= float(sma50) * 1.02:
+                near_ma = True
+        if ema21 and not pd.isna(ema21):
+            if close <= float(ema21) * 1.01:
+                near_ma = True
+        return near_ma
 
 
-def _find_ma_retake_entry(tqqq: pd.DataFrame, idx: int) -> bool:
-    if idx < 50:
+def _find_ma_retake_entry(qqq: pd.DataFrame, qq_idx: int) -> bool:
+    """
+    Detect QQQ retaking its 21-EMA after dipping below it.
+    The 50-day SMA must be rising (uptrend intact).
+    """
+    if qq_idx < 50:
         return False
-    ema21 = tqqq.iloc[idx].get("EMA_21")
-    prev_ema21 = tqqq.iloc[idx - 1].get("EMA_21")
+    ema21 = qqq.iloc[qq_idx].get("EMA_21")
+    prev_ema21 = qqq.iloc[qq_idx - 1].get("EMA_21")
     if ema21 is None or pd.isna(ema21) or prev_ema21 is None or pd.isna(prev_ema21):
         return False
-    close = float(tqqq.iloc[idx]["Close"])
-    prev_close = float(tqqq.iloc[idx - 1]["Close"])
+    close = float(qqq.iloc[qq_idx]["Close"])
+    prev_close = float(qqq.iloc[qq_idx - 1]["Close"])
     crossed_above = prev_close < float(prev_ema21) and close > float(ema21)
     if not crossed_above:
         return False
-    sma50 = tqqq.iloc[idx].get("SMA_50")
+    sma50 = qqq.iloc[qq_idx].get("SMA_50")
     if sma50 and not pd.isna(sma50):
-        if idx >= 10:
-            sma50_prev = tqqq.iloc[idx - 10].get("SMA_50")
+        if qq_idx >= 10:
+            sma50_prev = qqq.iloc[qq_idx - 10].get("SMA_50")
             if sma50_prev and not pd.isna(sma50_prev):
                 if float(sma50) < float(sma50_prev):
                     return False
-    lookback = min(20, idx)
-    recent_high = float(tqqq.iloc[idx - lookback: idx + 1]["High"].max())
+    lookback = min(20, qq_idx)
+    recent_high = float(qqq.iloc[qq_idx - lookback: qq_idx + 1]["High"].max())
     dip_pct = ((close - recent_high) / recent_high) * 100
-    return dip_pct <= -5.0
+    return dip_pct <= -2.0
 
 
 def _is_confirmed_bull(qqq: pd.DataFrame, idx: int) -> bool:
@@ -253,29 +278,6 @@ def _is_confirmed_bull(qqq: pd.DataFrame, idx: int) -> bool:
     close = float(qqq.iloc[idx]["Close"])
     return close > float(sma200) and float(sma50) > float(sma200)
 
-
-def _find_bull_reentry(tqqq: pd.DataFrame, idx: int) -> bool:
-    """
-    Bull re-entry: system is in cash during a confirmed bull market and
-    TQQQ is trending up above all key short-term MAs.
-
-    Requires TQQQ above 10-day SMA, 21-EMA, AND 50-day SMA, plus
-    today's close higher than yesterday (momentum confirming).
-    """
-    if idx < 50:
-        return False
-    close = float(tqqq.iloc[idx]["Close"])
-    prev_close = float(tqqq.iloc[idx - 1]["Close"])
-    if close <= prev_close:
-        return False
-    sma10 = tqqq.iloc[idx].get("SMA_10")
-    ema21 = tqqq.iloc[idx].get("EMA_21")
-    sma50 = tqqq.iloc[idx].get("SMA_50")
-    if (sma10 is None or pd.isna(sma10) or ema21 is None or pd.isna(ema21)
-            or sma50 is None or pd.isna(sma50)):
-        return False
-    return (close > float(sma10) and close > float(ema21)
-            and close > float(sma50))
 
 
 # ── Sell Signal Detection ─────────────────────────────────────────
@@ -536,8 +538,9 @@ def _run_continuous(start_year: int, end_year: int):
         if was_ftd:
             last_ftd_lost = is_loss
 
-        bull = _is_bull_regime(tqqq_df, close_idx)
-        if bull:
+        if is_loss:
+            cooldown_until = close_idx + 10
+        elif _is_bull_regime(tqqq_df, close_idx):
             cooldown_until = close_idx + COOLDOWN_BULL
         else:
             cooldown_until = close_idx + COOLDOWN_BEAR
@@ -566,8 +569,8 @@ def _run_continuous(start_year: int, end_year: int):
 
             is_ftd = _find_ftd_signal(nasdaq_df, nq_idx)
             is_3wk = _find_3wk_signal(qqq_df, tqqq_df, idx)
-            is_pullback = bull and _find_pullback_entry(tqqq_df, idx)
-            is_ma_retake = bull and _find_ma_retake_entry(tqqq_df, idx)
+            is_pullback = bull and _find_pullback_entry(qqq_df, qq_idx)
+            is_ma_retake = bull and _find_ma_retake_entry(qqq_df, qq_idx)
 
             # Enter at 50%. In confirmed bulls, adaptive scaling to 100%
             # kicks in after 3 profitable days (handled in hold loop).
