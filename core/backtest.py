@@ -192,7 +192,7 @@ def _find_3wk_signal(qqq: pd.DataFrame, tqqq: pd.DataFrame, idx: int) -> bool:
     return False
 
 
-PULLBACK_BULL_QQQ_PCT = 3.0
+PULLBACK_BULL_QQQ_PCT = 4.0
 PULLBACK_BEAR_QQQ_PCT = 5.0
 
 
@@ -522,11 +522,15 @@ def _run_continuous(start_year: int, end_year: int):
         held_days = close_idx - pf.entry_idx
         t = _make_trade(date, price)
         t.duration_days = held_days
-        is_loss = t.return_pct <= 0
         was_ftd = pf.signal_type == "FTD"
+        portfolio_before_exit = pf.total_value(price)
         pf.sell_all(price)
         t.portfolio_after = round(pf.total_value(price), 2)
         t.cash_after = round(pf.cash, 2)
+        actual_pnl = t.portfolio_after - t.portfolio_before
+        t.return_pct = round((actual_pnl / t.portfolio_before) * 100, 2) if t.portfolio_before > 0 else 0.0
+        t.outcome = "Win" if actual_pnl > 0 else "Loss"
+        is_loss = actual_pnl <= 0
         trades_by_year.setdefault(current_year, []).append(t)
         last_trade_idx = close_idx
 
