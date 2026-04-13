@@ -92,9 +92,7 @@ MIN_HOLD_DAYS = 15
 PULLBACK_ENTRY_PCT = 8.0
 COOLDOWN_BULL = 3
 COOLDOWN_BEAR = 7
-COOLDOWN_AFTER_STREAK = 15
 MAX_CONSECUTIVE_LOSSES = 2
-DIST_DAY_ENTRY_BLOCK = 4
 
 
 # ── Buy Signal Detection ─────────────────────────────────────────
@@ -495,36 +493,28 @@ def _run_continuous(start_year: int, end_year: int):
             below_200 = _qqq_below_200(qqq_df, qq_idx)
             bull = _is_bull_regime(tqqq_df, idx)
 
-            # Fix 1: Distribution day gate -- blocks non-FTD entries only
-            dist_days = _count_distribution_days(nasdaq_df, nq_idx)
-            dist_day_block = dist_days >= DIST_DAY_ENTRY_BLOCK
-
             is_ftd = _find_ftd_signal(nasdaq_df, nq_idx)
 
-            # Fix 4: Death cross blocks non-FTD entries
-            # Fix 1: Dist day gate blocks non-FTD entries
-            allow_non_ftd = (not death_cross) and (not dist_day_block)
-
-            is_3wk = allow_non_ftd and _find_3wk_signal(qqq_df, tqqq_df, idx)
-            is_pullback = allow_non_ftd and bull and _find_pullback_entry(tqqq_df, idx)
-            is_ma_retake = allow_non_ftd and bull and _find_ma_retake_entry(tqqq_df, idx)
+            # Death cross: allow non-FTD but cap at 25% (lagging indicator,
+            # don't fully block since markets bottom before golden cross)
+            is_3wk = _find_3wk_signal(qqq_df, tqqq_df, idx)
+            is_pullback = bull and _find_pullback_entry(tqqq_df, idx)
+            is_ma_retake = bull and _find_ma_retake_entry(tqqq_df, idx)
 
             alloc = 0.0
             signal = ""
             if is_ftd:
-                # Cap FTD at 50% when QQQ is below 200-day (bear market)
-                # In a bull market (above 200-day), go 100%
                 alloc = 0.5 if below_200 else 1.0
                 signal = "FTD"
                 consecutive_losses = 0
             elif is_3wk:
-                alloc, signal = 0.5, "3WK"
+                alloc, signal = 0.25 if death_cross else 0.5, "3WK"
             elif is_pullback:
-                alloc, signal = 0.5, "Pullback"
+                alloc, signal = 0.25 if death_cross else 0.5, "Pullback"
             elif is_ma_retake:
-                alloc, signal = 0.5, "MA Retake"
+                alloc, signal = 0.25 if death_cross else 0.5, "MA Retake"
 
-            # Fix 3: Cap non-FTD sizing after consecutive losses
+            # Cap non-FTD sizing after consecutive losses
             if alloc > 0 and signal != "FTD" and consecutive_losses >= MAX_CONSECUTIVE_LOSSES:
                 alloc = min(alloc, 0.25)
 
