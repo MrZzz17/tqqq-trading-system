@@ -40,7 +40,7 @@ def render():
         <div style="text-align: center; padding: 10px 0 5px 0;">
             <h1 style="margin-bottom: 0; font-size: 2.4em;">TQQQ Trading System</h1>
             <p style="color: #888; font-size: 1.05em; margin-top: 4px;">
-                Rules-based swing trading &nbsp;|&nbsp; CAN SLIM + 3x leveraged ETF strategy
+                Rules-based swing trading &nbsp;|&nbsp; 3x leveraged Nasdaq 100
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -247,35 +247,37 @@ def render():
     with tab_how:
         st.markdown("## How the Trading System Works")
         st.markdown("""
-This system is a **rules-based, hybrid swing trading strategy** that combines two
-complementary approaches to generate returns in different market environments.
+This is a **rules-based swing trading system** for TQQQ, the 3x leveraged
+Nasdaq 100 ETF. It captures **20-30% swings** that occur multiple times per year
+by timing entries at market turns and exiting incrementally as weakness appears.
 """)
 
-        st.markdown("### The Core Concept")
+        st.markdown("### What is TQQQ?")
         h1, h2 = st.columns(2)
         with h1:
             st.markdown(_styled_card(
-                "Strategy A: TQQQ Swing Trading",
-                """Trade TQQQ (3x leveraged Nasdaq 100 ETF) to capture 20-30% swings
-                that occur multiple times per year. Best executed in <b>tax-advantaged accounts</b>
-                (IRA/Roth) to avoid short-term capital gains taxes. This is the primary
-                return driver when individual stock setups are scarce."""
+                "TQQQ = 3x Daily Nasdaq 100",
+                """TQQQ delivers <b>3x the daily return</b> of the Nasdaq 100 (QQQ).
+                If QQQ rises 1%, TQQQ rises ~3%. If QQQ falls 1%, TQQQ falls ~3%.
+                This amplification creates large swings — typically <b>20-30%</b> moves
+                multiple times per year — which is what this system trades."""
             ), unsafe_allow_html=True)
         with h2:
             st.markdown(_styled_card(
-                "Strategy B: CAN SLIM Stock Picking",
-                """Hold 6-8 individual growth stocks with the potential to double or
-                triple over 12-18 months. Screened using CAN SLIM fundamentals
-                (25%+ earnings/sales growth, RS 95+) with technical entry timing.
-                TQQQ is sold down to fund these positions as setups emerge."""
+                "Why Swing Trade, Not Buy & Hold?",
+                """TQQQ suffers from <b>volatility decay</b> in sideways or declining markets.
+                A buy-and-hold approach can lose money even when QQQ is flat. Active swing
+                trading avoids the decay by <b>exiting during pullbacks</b> and only holding
+                during confirmed uptrends. Best executed in <b>IRA/Roth accounts</b> for
+                tax-free compounding."""
             ), unsafe_allow_html=True)
 
         st.markdown("### Buy Rules (Only 2)")
         st.markdown("""
 | # | Signal | Description | Position Size |
 |---|--------|-------------|---------------|
-| 1 | **Follow-Through Day (FTD)** | After a market correction, on day 4+ of a rally attempt, the Nasdaq gains >1.25% on volume higher than the prior day. This is the highest-conviction entry. | Up to 100% in IRA |
-| 2 | **3 White Knights** | 3 consecutive days of higher highs AND higher lows on QQQ (not TQQQ). Used when an FTD hasn't occurred but the market appears to be turning. | 25-75% based on conviction |
+| 1 | **Follow-Through Day (FTD)** | After a market correction, on day 4+ of a rally attempt, the Nasdaq gains >1.25% on volume higher than the prior day. Highest-conviction entry. | Up to 100% in IRA |
+| 2 | **3 White Knights** | 3 consecutive days of higher highs AND higher lows on QQQ (not TQQQ). Earlier signal before an FTD is confirmed. | 25-75% based on conviction |
 """)
 
         st.markdown("### Sell Rules (9 Signals)")
@@ -289,32 +291,22 @@ Positions are trimmed in **10% chunks** as signals accumulate. More signals = mo
 | 3 | 4-5 distribution days | Warning/Sell | Heavy institutional selling in the broader market |
 | 4 | 3 consecutive down days | Warning | Short-term momentum shifting |
 | 5 | 10-day MA violated on rising volume | Sell | Short-term trend broken with conviction |
-| 6 | 3 down days + rising volume + lower H/L | Sell | Severe weakness pattern |
+| 6 | 3 down days + rising vol + lower H/L | Sell | Severe weakness pattern |
 | 7 | Triple rejection at resistance | Warning | Price can't break through — exhaustion |
 | 8 | Bulls vs Bears >60% | Watch | Sentiment too bullish — contrarian caution |
-| 9 | **2 closes below 21-day EMA** | **Full Exit** | **Nuclear sell signal — exit immediately** |
+| 9 | **2 closes below 21-day EMA** | **Full Exit** | **Nuclear sell signal — exit entire position** |
 """)
 
         st.markdown("### Position Sizing & Risk Management")
-        r1, r2 = st.columns(2)
-        with r1:
-            st.markdown(_styled_card(
-                "TQQQ Sizing",
-                """<b>FTD entry:</b> Up to 100% (IRA accounts)<br>
-                <b>3WK entry:</b> 25% initial, scale to 50-75%<br>
-                <b>Exit:</b> Sell in 10% increments as sell signals fire<br>
-                <b>Hard stop:</b> If price undercuts the rally day low, exit immediately<br>
-                <b>No adding:</b> Enter at the turn, don't add to positions"""
-            ), unsafe_allow_html=True)
-        with r2:
-            st.markdown(_styled_card(
-                "Individual Stock Sizing",
-                """<b>Initial position:</b> 10% of portfolio<br>
-                <b>Max position:</b> 12.5-15% after adding on pullbacks<br>
-                <b>Stop-loss:</b> Technical stop at 50-day/10-week MA<br>
-                <b>100% rule:</b> When a stock doubles, sell half<br>
-                <b>Max holdings:</b> 6-8 core positions"""
-            ), unsafe_allow_html=True)
+        st.markdown(_styled_card(
+            "How to Size TQQQ Positions",
+            """<b>On a Follow-Through Day:</b> Up to 100% of TQQQ allocation (in IRA accounts)<br>
+            <b>On 3 White Knights (no FTD yet):</b> Start at 25%, scale to 50-75% based on conviction<br>
+            <b>Selling:</b> Trim in 10% increments as sell signals fire — don't dump all at once<br>
+            <b>Hard stop:</b> If price undercuts the low of the rally attempt's first day, exit immediately<br>
+            <b>No adding:</b> Enter at the market turn, do not add to the position after entry<br>
+            <b>Target:</b> Capture 20%+ swings, then sell into strength as signals appear"""
+        ), unsafe_allow_html=True)
 
         st.markdown("### Key Concepts")
 
@@ -328,9 +320,9 @@ significant selling pressure and corrections often follow.
 Distribution days expire after 25 trading sessions or when the index rallies
 5% above the distribution day's close.""")
 
-        with st.expander("What is a Follow-Through Day?"):
-            st.markdown("""A Follow-Through Day (FTD) is the primary signal that a new market
-uptrend is beginning after a correction. The criteria:
+        with st.expander("What is a Follow-Through Day (FTD)?"):
+            st.markdown("""A Follow-Through Day is the primary signal that a new market uptrend
+is beginning after a correction:
 
 1. The market must first establish a **rally attempt** — the index makes
    a low and begins moving higher
@@ -342,26 +334,36 @@ one. The system buys TQQQ aggressively on an FTD, with a stop-loss below
 the rally attempt's low.""")
 
         with st.expander("What is the 3 White Knights pattern?"):
-            st.markdown("""The 3 White Knights pattern is a secondary buy signal consisting of
-**3 consecutive trading days** where QQQ makes **both a higher high AND
-a higher low** compared to the previous day. This pattern suggests the
-market is establishing a floor and beginning to trend upward.
+            st.markdown("""3 consecutive trading days where QQQ makes **both a higher high AND
+a higher low** compared to the previous day. This suggests the market is
+establishing a floor and beginning to trend upward.
 
-It's used as an earlier, lower-conviction entry before an official FTD
-is confirmed. Position sizes are smaller (25-50%) compared to FTD entries.""")
+It's an earlier, lower-conviction entry used before an official FTD is
+confirmed. Position sizes are smaller (25-50%) compared to FTD entries.""")
 
-        with st.expander("Why TQQQ in an IRA?"):
+        with st.expander("Why trade TQQQ in an IRA?"):
             st.markdown("""TQQQ swing trades generate frequent short-term capital gains. In a
-taxable account, these gains can be taxed at 35-50%+ (federal + state),
+taxable account, these can be taxed at **35-50%+** (federal + state),
 significantly eroding returns. In an IRA or Roth IRA:
 
 - **Traditional IRA:** Gains are tax-deferred until withdrawal
 - **Roth IRA:** Gains are **tax-free** forever
 
-This makes IRAs the ideal vehicle for frequent TQQQ swing trading, as
-100% of the gains compound without tax drag. Individual stocks with
-12-18 month holds can go in taxable accounts where they qualify for
-lower long-term capital gains rates.""")
+This makes IRAs the ideal vehicle for frequent TQQQ swing trading — 100%
+of gains compound without tax drag.""")
+
+        with st.expander("What is volatility decay?"):
+            st.markdown("""Leveraged ETFs like TQQQ reset their leverage **daily**. In a volatile,
+sideways market, this daily reset erodes value even if the underlying index
+ends flat. Example:
+
+- Day 1: QQQ drops 5% → TQQQ drops 15% (from $100 to $85)
+- Day 2: QQQ rises 5.26% (back to even) → TQQQ rises 15.8% ($85 → $98.43)
+- **QQQ is flat, but TQQQ lost 1.6%**
+
+This is why buy-and-hold doesn't work with TQQQ in choppy markets. The
+system avoids decay by **exiting during pullbacks** and only holding during
+confirmed, trending uptrends.""")
 
     # ══════════════════════════════════════════════════════════════
     # TAB 3: HOW TO USE THIS SITE
