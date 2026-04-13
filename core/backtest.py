@@ -55,6 +55,7 @@ class YearResult:
     trades: List[Trade] = field(default_factory=list)
     starting_value: float = 0.0
     ending_value: float = 0.0
+    max_drawdown_pct: float = 0.0
 
 
 # ── Data ──────────────────────────────────────────────────────────
@@ -355,6 +356,17 @@ def _build_year_result(year, equity, trades, tqqq_df, qqq_df):
     losses = [t for t in trades if t.return_pct <= 0]
     best = max(trades, key=lambda t: t.return_pct) if trades else None
     worst = min(trades, key=lambda t: t.return_pct) if trades else None
+    # Max drawdown for this year
+    peak_y = sv
+    max_dd_y = 0.0
+    for d in sd:
+        v = yeq[d]
+        if v > peak_y:
+            peak_y = v
+        dd = ((v - peak_y) / peak_y) * 100
+        if dd < max_dd_y:
+            max_dd_y = dd
+
     return YearResult(
         year=year, total_return_pct=round(ret, 2), num_trades=len(trades),
         win_rate_pct=round(len(wins) / len(trades) * 100, 1) if trades else 0,
@@ -362,6 +374,7 @@ def _build_year_result(year, equity, trades, tqqq_df, qqq_df):
         avg_loss_pct=round(np.mean([t.return_pct for t in losses]), 2) if losses else 0,
         max_win_pct=round(max(t.return_pct for t in wins), 2) if wins else 0,
         max_loss_pct=round(min(t.return_pct for t in losses), 2) if losses else 0,
+        max_drawdown_pct=round(max_dd_y, 2),
         best_trade=f"{best.entry_date} to {best.exit_date} ({best.return_pct:+.1f}%)" if best else "N/A",
         worst_trade=f"{worst.entry_date} to {worst.exit_date} ({worst.return_pct:+.1f}%)" if worst else "N/A",
         tqqq_buy_hold_pct=round(tbh, 2), qqq_buy_hold_pct=round(qbh, 2),
@@ -369,14 +382,15 @@ def _build_year_result(year, equity, trades, tqqq_df, qqq_df):
     )
 
 
-def run_all_backtests() -> List[YearResult]:
+def run_all_backtests():
+    """Returns (results, equity_curve_dict)."""
     current_year = dt.date.today().year
     equity, trades_by_year, tqqq, qqq = _run_continuous(2011, current_year)
     if not equity:
-        return []
+        return [], {}
     results = []
     for year in range(2011, current_year + 1):
         r = _build_year_result(year, equity, trades_by_year.get(year, []), tqqq, qqq)
         if r:
             results.append(r)
-    return results
+    return results, equity

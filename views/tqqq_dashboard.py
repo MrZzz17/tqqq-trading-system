@@ -26,16 +26,18 @@ import os
 
 
 def _load_backtest_cached():
-    """Load backtest from pre-computed JSON cache. Recompute if missing or stale."""
+    """Load backtest from pre-computed JSON cache. Recompute if missing or stale.
+    Returns (results, equity_dict)."""
     cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_cache.json")
 
     if os.path.exists(cache_path):
         cache_age = dt.datetime.now().timestamp() - os.path.getmtime(cache_path)
-        if cache_age < 86400:  # less than 24 hours old
+        if cache_age < 86400:
             try:
                 with open(cache_path) as f:
                     data = json.load(f)
                 results = []
+                equity_data = {}
                 for r in data:
                     trades = [Trade(**t) for t in r["trades"]]
                     results.append(YearResult(
@@ -48,16 +50,17 @@ def _load_backtest_cached():
                         qqq_buy_hold_pct=r["qqq_buy_hold_pct"],
                         trades=trades, starting_value=r["starting_value"],
                         ending_value=r["ending_value"],
+                        max_drawdown_pct=r.get("max_drawdown_pct", 0.0),
                     ))
-                return results
+                    for d, v in r.get("equity", {}).items():
+                        equity_data[pd.Timestamp(d)] = v
+                return results, equity_data
             except Exception:
                 pass
 
-    # Cache missing or stale — recompute
     with st.spinner("Computing backtest (first load only)..."):
-        results = run_all_backtests()
+        results, equity = run_all_backtests()
 
-    # Save to cache for next time
     try:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         cache_data = []
@@ -72,6 +75,7 @@ def _load_backtest_cached():
                 "portfolio_after": t.portfolio_after,
                 "cash_after": t.cash_after,
             } for t in r.trades]
+            yr_eq = {d.isoformat(): v for d, v in equity.items() if d.year == r.year}
             cache_data.append({
                 "year": r.year, "total_return_pct": r.total_return_pct,
                 "num_trades": r.num_trades, "win_rate_pct": r.win_rate_pct,
@@ -81,14 +85,16 @@ def _load_backtest_cached():
                 "tqqq_buy_hold_pct": r.tqqq_buy_hold_pct,
                 "qqq_buy_hold_pct": r.qqq_buy_hold_pct,
                 "starting_value": r.starting_value,
-                "ending_value": r.ending_value, "trades": trades,
+                "ending_value": r.ending_value,
+                "max_drawdown_pct": r.max_drawdown_pct,
+                "trades": trades, "equity": yr_eq,
             })
         with open(cache_path, "w") as f:
             json.dump(cache_data, f)
     except Exception:
         pass
 
-    return results
+    return results, equity
 
 
 SEVERITY_ICONS = {"watch": "👀", "warning": "⚠️", "sell": "🔴"}
@@ -175,7 +181,7 @@ def render():
     bulls_input = bulls_pct if bulls_pct > 0 else None
 
     # ── Load backtest from cache (instant) or recompute if stale ──
-    bt_results = _load_backtest_cached()
+    bt_results, bt_equity = _load_backtest_cached()
 
     # ══════════════════════════════════════════════════════════════
     # TAB LAYOUT
@@ -900,15 +906,44 @@ in a taxable account.""")
         else:
             current_year = dt.date.today().year
 
-            # Summary table
+            # ── Equity Curve Chart ──
+            if bt_equity:
+                import plotly.graph_objects as go
+                eq_dates = sorted(bt_equity.keys())
+                eq_vals = [bt_equity[d] for d in eq_dates]
+
+                eq_fig = go.Figure()
+                eq_fig.add_trace(go.Scatter(
+                    x=eq_dates, y=eq_vals,
+                    mode="lines", name="Strategy",
+                    line=dict(color="#818cf8", width=2.5),
+                    fill="tozeroy", fillcolor="rgba(129,140,248,0.06)",
+                ))
+                eq_fig.update_layout(
+                    template="plotly_dark",
+                    height=400,
+                    margin=dict(l=10, r=10, t=40, b=10),
+                    title=dict(text="Equity Curve — Cumulative Portfolio Value",
+                               font=dict(size=16, color="#f0f0f0")),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(10,15,26,1)",
+                    yaxis=dict(
+                        gridcolor="rgba(255,255,255,0.04)",
+                        tickprefix="$", tickformat=",",
+                    ),
+                    xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
+                )
+                st.plotly_chart(eq_fig, use_container_width=True)
+
+            # ── Summary table with max drawdown ──
             summary_rows = []
             for r in results:
                 label = f"{r.year} YTD" if r.year == current_year else str(r.year)
                 summary_rows.append({
                     "Year": label,
                     "System Return": f"{r.total_return_pct:+.1f}%",
-                    "TQQQ Buy & Hold": f"{r.tqqq_buy_hold_pct:+.1f}%",
-                    "QQQ Buy & Hold": f"{r.qqq_buy_hold_pct:+.1f}%",
+                    "Max Drawdown": f"{r.max_drawdown_pct:.1f}%",
+                    "TQQQ B&H": f"{r.tqqq_buy_hold_pct:+.1f}%",
                     "Trades": r.num_trades,
                     "Win Rate": f"{r.win_rate_pct:.0f}%",
                     "Avg Win": f"{r.avg_win_pct:+.1f}%",
@@ -917,6 +952,19 @@ in a taxable account.""")
 
             st.markdown("### Year-by-Year Summary")
             st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+            # Total max drawdown
+            if bt_equity:
+                all_vals = sorted(bt_equity.items())
+                peak_v = all_vals[0][1]
+                total_max_dd = 0.0
+                for d, v in all_vals:
+                    if v > peak_v:
+                        peak_v = v
+                    dd = ((v - peak_v) / peak_v) * 100
+                    if dd < total_max_dd:
+                        total_max_dd = dd
+                st.markdown(f"**Total Max Drawdown (all-time): {total_max_dd:.1f}%**")
 
             # Key metrics
             total_trades = sum(r.num_trades for r in results)
