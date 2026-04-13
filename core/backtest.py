@@ -512,13 +512,9 @@ def _run_continuous(start_year: int, end_year: int):
             alloc = 0.0
             signal = ""
             if is_ftd:
-                # Fix 2: Only reduce FTD when below 200-day AND last FTD failed
-                # First FTD after a crash gets full allocation (Vibha goes all-in)
-                # Subsequent FTDs in a bear get 50% (prior FTD proved the market wasn't ready)
-                if below_200 and last_ftd_lost:
-                    alloc = 0.5
-                else:
-                    alloc = 1.0
+                # Cap FTD at 50% when QQQ is below 200-day (bear market)
+                # In a bull market (above 200-day), go 100%
+                alloc = 0.5 if below_200 else 1.0
                 signal = "FTD"
                 consecutive_losses = 0
             elif is_3wk:
@@ -623,7 +619,7 @@ def run_backtest_year(year: int) -> Optional[YearResult]:
 
 def run_all_backtests() -> List[YearResult]:
     current_year = dt.date.today().year
-    start_year = 2022
+    start_year = 2021
     end_year = current_year
 
     equity, trades_by_year, tqqq_df, qqq_df = _run_continuous(start_year, end_year)
