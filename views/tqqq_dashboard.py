@@ -270,27 +270,7 @@ def render():
                    delta=f"{sp_regime.dist_day_count} dist days", delta_color="off")
         st.caption(f"Data as of {data_date.strftime('%b %d, %Y')} · Yahoo Finance (delayed)")
 
-        # Alert Bar
-        sell_signals = check_all_sell_signals(tqqq, nasdaq, bulls_input)
-        alert_level, alert_color, alert_action = compute_alert_level(sell_signals)
-        triggered_count = sum(1 for s in sell_signals if s.triggered)
-        color_hex = {"green": "#17BF63", "yellow": "#FFAD1F", "orange": "#FF6F00", "red": "#E0245E"}.get(alert_color, "#FFAD1F")
-
-        st.markdown(f"""<div style="
-            background: linear-gradient(135deg, {color_hex}15, {color_hex}08);
-            border: 1px solid {color_hex}33; border-left: 5px solid {color_hex};
-            padding: 18px 24px; border-radius: 12px; margin: 12px 0 20px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <div>
-                    <span style="font-size: 1.5em; font-weight: 800; color: {color_hex};
-                                 letter-spacing: -0.02em;">
-                        {alert_level}</span>
-                    <span style="font-size: 0.9em; color: #8899A6; margin-left: 12px;">
-                        {triggered_count} of 9 sell signals active</span>
-                </div>
-                <div style="font-size: 0.95em; color: #E7E9EA; margin-top: 4px;">{alert_action}</div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+        # (Alert bar removed — replaced by System Signals section below)
 
         # ── Live Status: Current Position & Action Required ──
         all_trades_flat = [t for r in bt_results for t in r.trades]
@@ -511,49 +491,134 @@ def render():
             <b>Position Sizing ({regime_str}):</b> {exit_desc} Allocation: <b>{alloc_label}</b>
         </div>""", unsafe_allow_html=True)
 
-        # Buy Signals
-        st.markdown("### Buy Signals")
-        bc1, bc2 = st.columns(2)
-        ftd = detect_follow_through_day(nasdaq)
-        with bc1:
-            if ftd:
-                st.success(f"**Follow-Through Day** detected {ftd.date.strftime('%b %d')} ({ftd.strength})")
-                st.markdown(f"{ftd.details}  \nSuggested size: **{ftd.suggested_size:.0%}**")
-            else:
-                st.info("**Follow-Through Day** — Not detected in last 30 sessions")
-        wk = detect_three_white_knights(qqq)
-        with bc2:
-            if wk:
-                st.success(f"**3 White Knights** detected {wk.date.strftime('%b %d')} ({wk.strength})")
-                st.markdown(f"{wk.details}  \nSuggested size: **{wk.suggested_size:.0%}**")
-            else:
-                st.info("**3 White Knights** — Not detected in last 10 sessions")
+        # ── System Signals (what actually drives decisions) ──
+        st.markdown("### System Signals")
 
-        # Sell Signal Scoreboard
-        st.markdown("### Sell Signal Scoreboard")
-        cols = st.columns(3)
-        for i, sig in enumerate(sell_signals):
-            with cols[i % 3]:
-                icon = SEVERITY_ICONS.get(sig.severity, "")
-                if sig.triggered:
-                    badge_bg = "#E0245E"
-                    card_border = "rgba(224,36,94,0.4)"
-                    card_bg = "rgba(224,36,94,0.06)"
-                else:
-                    badge_bg = "#17BF63"
-                    card_border = "rgba(56,68,77,0.6)"
-                    card_bg = "rgba(29,161,242,0.02)"
-                st.markdown(f"""<div style="border: 1px solid {card_border}; background: {card_bg};
-                    border-radius: 12px; padding: 14px; margin-bottom: 10px; min-height: 110px;">
-                    <div style="font-weight: 700; font-size: 0.88em; color: #E7E9EA;">
-                        {icon} #{sig.rule_number} {sig.name}</div>
-                    <div style="font-size: 0.78em; color: #8899A6; margin: 6px 0;">{sig.details}</div>
-                    <span style="background: {badge_bg}; color: white; padding: 2px 10px;
-                        border-radius: 20px; font-size: 0.72em; font-weight: 600;">
-                        {'TRIGGERED' if sig.triggered else 'CLEAR'}</span>
-                    <span style="color: #657786; font-size: 0.7em; margin-left: 6px;">
-                        {sig.severity.upper()}</span>
-                </div>""", unsafe_allow_html=True)
+        ftd = detect_follow_through_day(nasdaq)
+
+        # Entry signals
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            ftd_active = ftd is not None
+            ftd_bg = "#34d39922" if ftd_active else "rgba(255,255,255,0.02)"
+            ftd_border = "#34d39944" if ftd_active else "rgba(255,255,255,0.06)"
+            ftd_badge = "DETECTED" if ftd_active else "CLEAR"
+            ftd_badge_color = "#34d399" if ftd_active else "#6b7280"
+            st.markdown(f"""<div style="border: 1px solid {ftd_border}; background: {ftd_bg};
+                border-radius: 14px; padding: 16px; min-height: 120px;">
+                <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
+                    Follow-Through Day</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
+                    {'Nasdaq gained ' + f'{ftd.details}' if ftd_active else 'No FTD in last 30 sessions. Requires 7%+ Nasdaq correction + 1.25% rally on day 4+.'}</div>
+                <span style="background: {ftd_badge_color}22; color: {ftd_badge_color}; padding: 3px 12px;
+                    border-radius: 20px; font-size: 0.72em; font-weight: 600;
+                    border: 1px solid {ftd_badge_color}44;">{ftd_badge}</span>
+                <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">ENTRY SIGNAL</span>
+            </div>""", unsafe_allow_html=True)
+
+        with s2:
+            macd_bg = "#34d39922" if macd_pos_now else "#f8717122"
+            macd_border = "#34d39944" if macd_pos_now else "#f8717144"
+            macd_badge = "POSITIVE" if macd_pos_now else "NEGATIVE"
+            macd_badge_c = "#34d399" if macd_pos_now else "#f87171"
+            macd_desc = "Weekly MACD above zero — bullish trend confirmed. System at 100%." if macd_pos_now else "Weekly MACD below zero — trend weakening. System at 50% or cash."
+            st.markdown(f"""<div style="border: 1px solid {macd_border}; background: {macd_bg};
+                border-radius: 14px; padding: 16px; min-height: 120px;">
+                <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
+                    Weekly MACD</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">{macd_desc}</div>
+                <span style="background: {macd_badge_c}22; color: {macd_badge_c}; padding: 3px 12px;
+                    border-radius: 20px; font-size: 0.72em; font-weight: 600;
+                    border: 1px solid {macd_badge_c}44;">{macd_badge}</span>
+                <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">TREND</span>
+            </div>""", unsafe_allow_html=True)
+
+        with s3:
+            above_c = "#34d399" if above_200 else "#f87171"
+            above_bg = "#34d39922" if above_200 else "#f8717122"
+            above_border = "#34d39944" if above_200 else "#f8717144"
+            above_badge = "ABOVE" if above_200 else "BELOW"
+            sma200_val = float(qqq_sma200) if qqq_sma200 is not None and not pd.isna(qqq_sma200) else 0
+            pct_from_200 = ((qqq_close_val - sma200_val) / sma200_val * 100) if sma200_val > 0 else 0
+            above_desc = f"QQQ at ${qqq_close_val:.2f}, {pct_from_200:+.1f}% from 200-day (${sma200_val:.2f}). {'Bull market — entries allowed.' if above_200 else 'Bear market — cash only (except FTD).'}"
+            st.markdown(f"""<div style="border: 1px solid {above_border}; background: {above_bg};
+                border-radius: 14px; padding: 16px; min-height: 120px;">
+                <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
+                    QQQ vs 200-Day SMA</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">{above_desc}</div>
+                <span style="background: {above_c}22; color: {above_c}; padding: 3px 12px;
+                    border-radius: 20px; font-size: 0.72em; font-weight: 600;
+                    border: 1px solid {above_c}44;">{above_badge}</span>
+                <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">REGIME</span>
+            </div>""", unsafe_allow_html=True)
+
+        # Exit signals
+        st.markdown("")
+        e1, e2, e3 = st.columns(3)
+
+        with e1:
+            # Check consecutive closes below 200-day
+            below_count = 0
+            if len(qqq) >= 2:
+                for j in range(1, min(3, len(qqq))):
+                    row = qqq.iloc[-j]
+                    s = row.get("SMA_200")
+                    if s is not None and not pd.isna(s) and float(row["Close"]) < float(s):
+                        below_count += 1
+                    else:
+                        break
+            exit_200_triggered = below_count >= 2
+            exit_200_c = "#f87171" if exit_200_triggered else ("#fbbf24" if below_count == 1 else "#34d399")
+            exit_200_badge = "EXIT" if exit_200_triggered else (f"{below_count}/2 CLOSES" if below_count > 0 else "CLEAR")
+            st.markdown(f"""<div style="border: 1px solid {exit_200_c}44; background: {exit_200_c}11;
+                border-radius: 14px; padding: 16px; min-height: 120px;">
+                <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
+                    200-Day SMA Exit</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
+                    {'EXIT TRIGGERED — QQQ closed below 200-day for 2 consecutive days.' if exit_200_triggered else
+                     (f'Warning: {below_count} close below 200-day. One more triggers exit.' if below_count == 1 else
+                      'QQQ holding above 200-day SMA. No exit signal.')}</div>
+                <span style="background: {exit_200_c}22; color: {exit_200_c}; padding: 3px 12px;
+                    border-radius: 20px; font-size: 0.72em; font-weight: 600;
+                    border: 1px solid {exit_200_c}44;">{exit_200_badge}</span>
+                <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">EXIT SIGNAL</span>
+            </div>""", unsafe_allow_html=True)
+
+        with e2:
+            # Trailing stop status
+            stop_active = pct_from_200 >= 3.0 if above_200 else False
+            stop_c = "#34d399" if not stop_active else "#818cf8"
+            st.markdown(f"""<div style="border: 1px solid {stop_c}44; background: {stop_c}11;
+                border-radius: 14px; padding: 16px; min-height: 120px;">
+                <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
+                    12% Trailing Stop</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
+                    {'ACTIVE — QQQ is ' + f'{pct_from_200:.1f}% above 200-day (>3% threshold). Exit fires if portfolio drops 12% from peak.' if stop_active else
+                     'INACTIVE — QQQ is within 3% of 200-day. Trailing stop disabled to avoid chop.'}</div>
+                <span style="background: {stop_c}22; color: {stop_c}; padding: 3px 12px;
+                    border-radius: 20px; font-size: 0.72em; font-weight: 600;
+                    border: 1px solid {stop_c}44;">{'ACTIVE' if stop_active else 'INACTIVE'}</span>
+                <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">TRAILING STOP</span>
+            </div>""", unsafe_allow_html=True)
+
+        with e3:
+            # Crash detector
+            tqqq_10d_high = float(tqqq.iloc[-10:]["High"].max()) if len(tqqq) >= 10 else tqqq_price
+            tqqq_drop_10d = ((tqqq_price - tqqq_10d_high) / tqqq_10d_high) * 100
+            crash_detected = tqqq_drop_10d <= -30
+            crash_c = "#f87171" if crash_detected else "#34d399"
+            st.markdown(f"""<div style="border: 1px solid {crash_c}44; background: {crash_c}11;
+                border-radius: 14px; padding: 16px; min-height: 120px;">
+                <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
+                    Crash Detector</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
+                    {'CRASH DETECTED — TQQQ dropped ' + f'{tqqq_drop_10d:.0f}% in 10 days. All entries blocked for 40 days.' if crash_detected else
+                     f'TQQQ 10-day drawdown: {tqqq_drop_10d:+.1f}% (threshold: -30%). No crash detected.'}</div>
+                <span style="background: {crash_c}22; color: {crash_c}; padding: 3px 12px;
+                    border-radius: 20px; font-size: 0.72em; font-weight: 600;
+                    border: 1px solid {crash_c}44;">{'CRASH' if crash_detected else 'CLEAR'}</span>
+                <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">SAFETY</span>
+            </div>""", unsafe_allow_html=True)
 
         # Chart
         st.markdown("### TQQQ Price Chart")
