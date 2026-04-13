@@ -47,6 +47,7 @@ def _try_tvdatafeed(ticker: str, n_bars: int = 500, interval: str = "daily") -> 
     try:
         from tvDatafeed import TvDatafeed, Interval
 
+        tv_session = os.environ.get("TV_SESSION")
         tv_user = os.environ.get("TV_USERNAME")
         tv_pass = os.environ.get("TV_PASSWORD")
 
@@ -54,6 +55,10 @@ def _try_tvdatafeed(ticker: str, n_bars: int = 500, interval: str = "daily") -> 
             tv = TvDatafeed(username=tv_user, password=tv_pass)
         else:
             tv = TvDatafeed()
+
+        # Inject browser session token (overrides login result)
+        if tv_session:
+            tv.token = tv_session
 
         interval_map = {
             "daily": Interval.in_daily,

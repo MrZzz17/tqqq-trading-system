@@ -169,69 +169,80 @@ def render():
             </div>
         </div>""", unsafe_allow_html=True)
 
-        # ── YTD Performance & Latest Trade ──
+        # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
+        if bt_results:
+            lifetime_start = bt_results[0].starting_value
+            lifetime_end = bt_results[-1].ending_value
+            lifetime_ret = ((lifetime_end / lifetime_start) - 1) * 100
+            lifetime_mult = lifetime_end / lifetime_start
+            start_year_bt = bt_results[0].year
+
+            st.markdown(f"""<div style="border: 1px solid #1DA1F233; border-radius: 16px;
+                padding: 24px; background: linear-gradient(135deg, #1DA1F208, #17BF6308);
+                margin-bottom: 16px; text-align: center;">
+                <div style="font-size: 0.82em; color: #8899A6; text-transform: uppercase;
+                    letter-spacing: 0.1em; margin-bottom: 8px;">
+                    Backtested {start_year_bt}–{current_year} · $100K Starting Capital</div>
+                <div style="font-size: 3em; font-weight: 900; color: #17BF63;
+                    letter-spacing: -0.03em; line-height: 1.1;">
+                    ${lifetime_end:,.0f}</div>
+                <div style="font-size: 1.1em; color: #E7E9EA; margin-top: 6px;">
+                    {lifetime_mult:,.0f}x return &nbsp;·&nbsp; {lifetime_ret:+,.0f}% total</div>
+            </div>""", unsafe_allow_html=True)
+
+        # ── YTD + Prior Year + Latest Trade ──
         ytd_result = next((r for r in bt_results if r.year == current_year), None)
+        prior_year_result = next((r for r in bt_results if r.year == current_year - 1), None)
         all_trades_flat = [t for r in bt_results for t in r.trades]
         latest_trade = all_trades_flat[-1] if all_trades_flat else None
 
-        if ytd_result or latest_trade:
-            pc1, pc2 = st.columns(2)
+        pc1, pc2, pc3 = st.columns(3)
 
-            with pc1:
-                if ytd_result:
-                    ytd_color = "#17BF63" if ytd_result.total_return_pct >= 0 else "#E0245E"
-                    pnl = ytd_result.ending_value - ytd_result.starting_value
-                    st.markdown(f"""<div style="border: 1px solid {ytd_color}33; border-radius: 12px;
-                        padding: 18px; background: {ytd_color}08;">
-                        <div style="font-size: 0.82em; color: #8899A6; text-transform: uppercase;
-                            letter-spacing: 0.05em; margin-bottom: 6px;">📈 {current_year} YTD Performance</div>
-                        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
-                            <span style="font-size: 1.8em; font-weight: 800; color: {ytd_color};">
-                                {ytd_result.total_return_pct:+.1f}%</span>
-                            <span style="font-size: 1.0em; color: #E7E9EA; font-weight: 600;">
-                                ${pnl:+,.0f}</span>
-                        </div>
-                        <div style="font-size: 0.82em; color: #8899A6; margin-top: 8px;">
-                            ${ytd_result.starting_value:,.0f} → ${ytd_result.ending_value:,.0f}
-                            &nbsp;·&nbsp; {ytd_result.num_trades} trades
-                            &nbsp;·&nbsp; {ytd_result.win_rate_pct:.0f}% win rate
-                            &nbsp;·&nbsp; TQQQ B&H: {ytd_result.tqqq_buy_hold_pct:+.1f}%
-                        </div>
-                    </div>""", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""<div style="border: 1px solid #38444D; border-radius: 12px;
-                        padding: 18px; background: rgba(29,161,242,0.03);">
-                        <div style="font-size: 0.82em; color: #8899A6;">📈 {current_year} YTD Performance</div>
-                        <div style="font-size: 1.2em; color: #657786; margin-top: 6px;">No data yet</div>
-                    </div>""", unsafe_allow_html=True)
+        with pc1:
+            if prior_year_result:
+                py_color = "#17BF63" if prior_year_result.total_return_pct >= 0 else "#E0245E"
+                py_pnl = prior_year_result.ending_value - prior_year_result.starting_value
+                st.markdown(f"""<div style="border: 1px solid {py_color}33; border-radius: 12px;
+                    padding: 16px; background: {py_color}08;">
+                    <div style="font-size: 0.78em; color: #8899A6; text-transform: uppercase;
+                        letter-spacing: 0.05em;">{current_year - 1} Full Year</div>
+                    <div style="font-size: 1.6em; font-weight: 800; color: {py_color}; margin-top: 4px;">
+                        {prior_year_result.total_return_pct:+.1f}%</div>
+                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
+                        {prior_year_result.num_trades} trades · B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
+                </div>""", unsafe_allow_html=True)
 
-            with pc2:
-                if latest_trade:
-                    t = latest_trade
-                    t_color = "#17BF63" if t.return_pct > 0 else "#E0245E"
-                    pct_deployed = t.cash_deployed / t.portfolio_before * 100 if t.portfolio_before > 0 else 0
-                    is_open = t.exit_date == bt_results[-1].trades[-1].exit_date if bt_results and bt_results[-1].trades else False
-                    trade_pnl = t.portfolio_after - t.portfolio_before
+        with pc2:
+            if ytd_result:
+                ytd_color = "#17BF63" if ytd_result.total_return_pct >= 0 else "#E0245E"
+                st.markdown(f"""<div style="border: 1px solid {ytd_color}33; border-radius: 12px;
+                    padding: 16px; background: {ytd_color}08;">
+                    <div style="font-size: 0.78em; color: #8899A6; text-transform: uppercase;
+                        letter-spacing: 0.05em;">{current_year} YTD</div>
+                    <div style="font-size: 1.6em; font-weight: 800; color: {ytd_color}; margin-top: 4px;">
+                        {ytd_result.total_return_pct:+.1f}%</div>
+                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
+                        {ytd_result.num_trades} trades · B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
+                </div>""", unsafe_allow_html=True)
 
-                    st.markdown(f"""<div style="border: 1px solid {t_color}33; border-radius: 12px;
-                        padding: 18px; background: {t_color}08;">
-                        <div style="font-size: 0.82em; color: #8899A6; text-transform: uppercase;
-                            letter-spacing: 0.05em; margin-bottom: 6px;">🔄 Latest Trade</div>
-                        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
-                            <span style="font-size: 1.4em; font-weight: 800; color: {t_color};">
-                                {t.return_pct:+.1f}%</span>
-                            <span style="background: rgba(29,161,242,0.15); color: #1DA1F2; padding: 2px 10px;
-                                border-radius: 20px; font-size: 0.75em; font-weight: 600;">{t.signal_type}</span>
-                            <span style="background: {t_color}22; color: {t_color}; padding: 2px 10px;
-                                border-radius: 20px; font-size: 0.75em; font-weight: 600;">{t.outcome}</span>
-                        </div>
-                        <div style="font-size: 0.82em; color: #8899A6; margin-top: 8px;">
-                            {t.entry_date} → {t.exit_date} ({t.duration_days}d)
-                            &nbsp;·&nbsp; {t.shares:,.0f} shares @ ${t.entry_price:.2f}
-                            &nbsp;·&nbsp; ${t.cash_deployed:,.0f} deployed ({pct_deployed:.0f}%)
-                        </div>
-                    </div>""", unsafe_allow_html=True)
+        with pc3:
+            if latest_trade:
+                t = latest_trade
+                t_color = "#17BF63" if t.return_pct > 0 else "#E0245E"
+                st.markdown(f"""<div style="border: 1px solid {t_color}33; border-radius: 12px;
+                    padding: 16px; background: {t_color}08;">
+                    <div style="font-size: 0.78em; color: #8899A6; text-transform: uppercase;
+                        letter-spacing: 0.05em;">Latest Trade</div>
+                    <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+                        <span style="font-size: 1.6em; font-weight: 800; color: {t_color};">
+                            {t.return_pct:+.1f}%</span>
+                        <span style="background: rgba(29,161,242,0.15); color: #1DA1F2; padding: 2px 8px;
+                            border-radius: 20px; font-size: 0.7em; font-weight: 600;">{t.signal_type}</span>
+                    </div>
+                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
+                        {t.entry_date} → {t.exit_date} ({t.duration_days}d)</div>
+                </div>""", unsafe_allow_html=True)
 
         # ── Market Health Panel ──
         st.markdown("### Market Health")
