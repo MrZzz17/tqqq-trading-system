@@ -244,6 +244,40 @@ def _find_ma_retake_entry(tqqq: pd.DataFrame, idx: int) -> bool:
     return dip_pct <= -5.0
 
 
+def _is_confirmed_bull(qqq: pd.DataFrame, idx: int) -> bool:
+    """Confirmed bull = QQQ above 200-day AND golden cross (50d > 200d)."""
+    sma200 = qqq.iloc[idx].get("SMA_200")
+    sma50 = qqq.iloc[idx].get("SMA_50")
+    if sma200 is None or pd.isna(sma200) or sma50 is None or pd.isna(sma50):
+        return False
+    close = float(qqq.iloc[idx]["Close"])
+    return close > float(sma200) and float(sma50) > float(sma200)
+
+
+def _find_bull_reentry(tqqq: pd.DataFrame, idx: int) -> bool:
+    """
+    Bull re-entry: system is in cash during a confirmed bull market and
+    TQQQ is trending up above all key short-term MAs.
+
+    Requires TQQQ above 10-day SMA, 21-EMA, AND 50-day SMA, plus
+    today's close higher than yesterday (momentum confirming).
+    """
+    if idx < 50:
+        return False
+    close = float(tqqq.iloc[idx]["Close"])
+    prev_close = float(tqqq.iloc[idx - 1]["Close"])
+    if close <= prev_close:
+        return False
+    sma10 = tqqq.iloc[idx].get("SMA_10")
+    ema21 = tqqq.iloc[idx].get("EMA_21")
+    sma50 = tqqq.iloc[idx].get("SMA_50")
+    if (sma10 is None or pd.isna(sma10) or ema21 is None or pd.isna(ema21)
+            or sma50 is None or pd.isna(sma50)):
+        return False
+    return (close > float(sma10) and close > float(ema21)
+            and close > float(sma50))
+
+
 # ── Sell Signal Detection ─────────────────────────────────────────
 
 def _check_nuclear_exit(tqqq: pd.DataFrame, idx: int) -> bool:
@@ -334,6 +368,10 @@ def _evaluate_exit(tqqq: pd.DataFrame, nasdaq: pd.DataFrame, idx: int,
 
 # ── Dollar-Based Portfolio ────────────────────────────────────────
 
+SCALE_UP_DAYS = 3
+TRAILING_TRIM_PCT = 8.0
+
+
 class Portfolio:
     """Tracks actual cash and shares -- no abstract percentages."""
 
@@ -348,6 +386,9 @@ class Portfolio:
         self.entry_shares = 0.0
         self.entry_cash_deployed = 0.0
         self.entry_portfolio_value = 0.0
+        self.profitable_days = 0
+        self.peak_price = 0.0
+        self.scaled_to = 0.0
 
     @property
     def in_position(self) -> bool:
@@ -374,21 +415,50 @@ class Portfolio:
         self.rally_low = rally_low
         self.entry_shares = self.shares
         self.entry_cash_deployed = cash_to_deploy
+        self.profitable_days = 0
+        self.peak_price = price
+        self.scaled_to = allocation
+
+    def scale_up(self, price: float, target_alloc: float):
+        """Scale position up by deploying more cash."""
+        total = self.total_value(price)
+        current_alloc = (self.shares * price) / total if total > 0 else 0
+        if current_alloc >= target_alloc - 0.01:
+            return
+        additional = total * target_alloc - self.shares * price
+        additional = min(additional, self.cash)
+        if additional <= 0:
+            return
+        new_shares = additional / price
+        self.shares += new_shares
+        self.cash -= additional
+        self.scaled_to = target_alloc
 
     def sell_all(self, price: float) -> float:
-        """Sell entire position. Returns cash received."""
         proceeds = self.shares * price
         self.cash += proceeds
         self.shares = 0.0
         return proceeds
 
     def trim(self, price: float, fraction: float) -> float:
-        """Sell `fraction` of shares. Returns cash received."""
         shares_to_sell = self.shares * fraction
         proceeds = shares_to_sell * price
         self.cash += proceeds
         self.shares -= shares_to_sell
         return proceeds
+
+    def trim_to_allocation(self, price: float, target_alloc: float):
+        """Trim position down to target allocation."""
+        total = self.total_value(price)
+        target_value = total * target_alloc
+        current_value = self.shares * price
+        if current_value <= target_value:
+            return
+        excess_value = current_value - target_value
+        shares_to_sell = excess_value / price
+        self.cash += shares_to_sell * price
+        self.shares -= shares_to_sell
+        self.scaled_to = target_alloc
 
 
 # ── Continuous Multi-Year Backtest ────────────────────────────────
@@ -491,30 +561,32 @@ def _run_continuous(start_year: int, end_year: int):
 
             death_cross = _qqq_death_cross(qqq_df, qq_idx)
             below_200 = _qqq_below_200(qqq_df, qq_idx)
+            confirmed_bull = _is_confirmed_bull(qqq_df, qq_idx)
             bull = _is_bull_regime(tqqq_df, idx)
 
             is_ftd = _find_ftd_signal(nasdaq_df, nq_idx)
-
-            # Death cross: allow non-FTD but cap at 25% (lagging indicator,
-            # don't fully block since markets bottom before golden cross)
             is_3wk = _find_3wk_signal(qqq_df, tqqq_df, idx)
             is_pullback = bull and _find_pullback_entry(tqqq_df, idx)
             is_ma_retake = bull and _find_ma_retake_entry(tqqq_df, idx)
 
+            # Enter at 50%. In confirmed bulls, adaptive scaling to 100%
+            # kicks in after 3 profitable days (handled in hold loop).
             alloc = 0.0
             signal = ""
+
             if is_ftd:
-                alloc = 0.5 if below_200 else 1.0
-                signal = "FTD"
+                alloc, signal = 0.5, "FTD"
                 consecutive_losses = 0
             elif is_3wk:
-                alloc, signal = 0.25 if death_cross else 0.5, "3WK"
+                alloc = 0.25 if death_cross else 0.5
+                signal = "3WK"
             elif is_pullback:
-                alloc, signal = 0.25 if death_cross else 0.5, "Pullback"
+                alloc = 0.25 if death_cross else 0.5
+                signal = "Pullback"
             elif is_ma_retake:
-                alloc, signal = 0.25 if death_cross else 0.5, "MA Retake"
+                alloc = 0.25 if death_cross else 0.5
+                signal = "MA Retake"
 
-            # Cap non-FTD sizing after consecutive losses
             if alloc > 0 and signal != "FTD" and consecutive_losses >= MAX_CONSECUTIVE_LOSSES:
                 alloc = min(alloc, 0.25)
 
@@ -536,6 +608,24 @@ def _run_continuous(start_year: int, end_year: int):
                 pf.trim(price, trim_frac)
                 if pf.shares * price < pf.total_value(price) * 0.10:
                     _close_position(idx, date, price, current_year)
+
+            else:
+                if price > pf.peak_price:
+                    pf.peak_price = price
+
+                held_days = idx - pf.entry_idx
+
+                # In confirmed bull: scale to 100% after 3 profitable days
+                if (confirmed_bull and held_days >= SCALE_UP_DAYS
+                        and price > pf.entry_price and pf.scaled_to < 1.0):
+                    pf.scale_up(price, 1.0)
+
+                # Trailing trim: if price drops 8% from peak, trim to 50%
+                if pf.peak_price > 0 and pf.scaled_to > 0.5:
+                    drawdown = ((price - pf.peak_price) / pf.peak_price) * 100
+                    if drawdown <= -TRAILING_TRIM_PCT:
+                        pf.trim_to_allocation(price, 0.5)
+                        pf.peak_price = price
 
         equity_by_date[date] = pf.total_value(price)
 
