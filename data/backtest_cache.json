@@ -1,19 +1,19 @@
 [
   {
     "year": 2011,
-    "total_return_pct": -22.02,
+    "total_return_pct": -17.88,
     "num_trades": 8,
     "win_rate_pct": 37.5,
     "avg_win_pct": 3.24,
-    "avg_loss_pct": -6.89,
+    "avg_loss_pct": -5.94,
     "max_win_pct": 5.06,
-    "max_loss_pct": -10.76,
+    "max_loss_pct": -10.74,
     "best_trade": "2011-03-21 to 2011-05-24 (+5.1%)",
-    "worst_trade": "2011-10-18 to 2011-11-17 (-10.8%)",
+    "worst_trade": "2011-06-03 to 2011-06-15 (-10.7%)",
     "tqqq_buy_hold_pct": -12.02,
     "qqq_buy_hold_pct": 1.89,
     "starting_value": 100017.86,
-    "ending_value": 77996.1,
+    "ending_value": 82136.09,
     "trades": [
       {
         "entry_date": "2011-01-03",
@@ -24,7 +24,7 @@
         "signal_type": "MACD",
         "duration_days": 66,
         "outcome": "Win",
-        "shares": 260817.24,
+        "shares": 260817.18,
         "cash_deployed": 100018.0,
         "portfolio_before": 100018.0,
         "portfolio_after": 103124.0,
@@ -39,7 +39,7 @@
         "signal_type": "MACD",
         "duration_days": 64,
         "outcome": "Win",
-        "shares": 270901.07,
+        "shares": 270901.03,
         "cash_deployed": 103253.0,
         "portfolio_before": 103253.0,
         "portfolio_after": 108482.0,
@@ -54,7 +54,7 @@
         "signal_type": "MACD",
         "duration_days": 12,
         "outcome": "Loss",
-        "shares": 275403.85,
+        "shares": 275403.79,
         "cash_deployed": 108618.0,
         "portfolio_before": 108618.0,
         "portfolio_after": 96947.0,
@@ -69,7 +69,7 @@
         "signal_type": "MACD",
         "duration_days": 38,
         "outcome": "Loss",
-        "shares": 261285.59,
+        "shares": 261285.57,
         "cash_deployed": 97086.0,
         "portfolio_before": 97086.0,
         "portfolio_after": 89955.0,
@@ -84,7 +84,7 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Win",
-        "shares": 135428.36,
+        "shares": 135428.33,
         "cash_deployed": 45267.0,
         "portfolio_before": 90535.0,
         "portfolio_after": 91927.0,
@@ -95,15 +95,15 @@
         "exit_date": "2011-11-17",
         "entry_price": 0.39,
         "exit_price": 0.34,
-        "return_pct": -10.76,
+        "return_pct": -6.03,
         "signal_type": "FTD",
         "duration_days": 30,
         "outcome": "Loss",
-        "shares": 118207.95,
+        "shares": 118207.93,
         "cash_deployed": 46087.0,
         "portfolio_before": 92174.0,
-        "portfolio_after": 82253.0,
-        "cash_after": 82253.0
+        "portfolio_after": 86619.0,
+        "cash_after": 86619.0
       },
       {
         "entry_date": "2011-11-30",
@@ -114,11 +114,11 @@
         "signal_type": "MACD",
         "duration_days": 8,
         "outcome": "Loss",
-        "shares": 237238.02,
-        "cash_deployed": 82370.0,
-        "portfolio_before": 82370.0,
-        "portfolio_after": 81181.0,
-        "cash_after": 81181.0
+        "shares": 249830.36,
+        "cash_deployed": 86742.0,
+        "portfolio_before": 86742.0,
+        "portfolio_after": 85490.0,
+        "cash_after": 85490.0
       },
       {
         "entry_date": "2011-12-20",
@@ -129,11 +129,11 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Loss",
-        "shares": 239347.72,
-        "cash_deployed": 81297.0,
-        "portfolio_before": 81297.0,
-        "portfolio_after": 77913.0,
-        "cash_after": 77913.0
+        "shares": 252052.06,
+        "cash_deployed": 85613.0,
+        "portfolio_before": 85613.0,
+        "portfolio_after": 82048.0,
+        "cash_after": 82048.0
       }
     ]
   },
@@ -150,8 +150,8 @@
     "worst_trade": "2012-05-03 to 2012-05-14 (-12.2%)",
     "tqqq_buy_hold_pct": 44.09,
     "qqq_buy_hold_pct": 15.89,
-    "starting_value": 78010.03,
-    "ending_value": 113406.15,
+    "starting_value": 82150.75,
+    "ending_value": 119425.64,
     "trades": [
       {
         "entry_date": "2012-01-03",
@@ -162,11 +162,11 @@
         "signal_type": "FTD",
         "duration_days": 111,
         "outcome": "Win",
-        "shares": 218770.53,
-        "cash_deployed": 78010.0,
-        "portfolio_before": 78010.0,
-        "portfolio_after": 115615.0,
-        "cash_after": 115615.0
+        "shares": 230382.74,
+        "cash_deployed": 82151.0,
+        "portfolio_before": 82151.0,
+        "portfolio_after": 121751.0,
+        "cash_after": 121751.0
       },
       {
         "entry_date": "2012-05-03",
@@ -177,11 +177,11 @@
         "signal_type": "MACD",
         "duration_days": 11,
         "outcome": "Loss",
-        "shares": 207768.3,
-        "cash_deployed": 115780.0,
-        "portfolio_before": 115780.0,
-        "portfolio_after": 101593.0,
-        "cash_after": 101593.0
+        "shares": 218796.47,
+        "cash_deployed": 121925.0,
+        "portfolio_before": 121925.0,
+        "portfolio_after": 106986.0,
+        "cash_after": 106986.0
       },
       {
         "entry_date": "2012-05-24",
@@ -192,11 +192,11 @@
         "signal_type": "MACD",
         "duration_days": 138,
         "outcome": "Win",
-        "shares": 223292.92,
-        "cash_deployed": 101739.0,
-        "portfolio_before": 101739.0,
-        "portfolio_after": 125982.0,
-        "cash_after": 125982.0
+        "shares": 235145.14,
+        "cash_deployed": 107139.0,
+        "portfolio_before": 107139.0,
+        "portfolio_after": 132669.0,
+        "cash_after": 132669.0
       },
       {
         "entry_date": "2012-10-19",
@@ -207,11 +207,11 @@
         "signal_type": "MACD",
         "duration_days": 19,
         "outcome": "Loss",
-        "shares": 240263.8,
-        "cash_deployed": 126163.0,
-        "portfolio_before": 126163.0,
-        "portfolio_after": 117221.0,
-        "cash_after": 117221.0
+        "shares": 253016.8,
+        "cash_deployed": 132859.0,
+        "portfolio_before": 132859.0,
+        "portfolio_after": 123443.0,
+        "cash_after": 123443.0
       },
       {
         "entry_date": "2012-11-28",
@@ -222,11 +222,11 @@
         "signal_type": "MACD",
         "duration_days": 7,
         "outcome": "Loss",
-        "shares": 227360.25,
-        "cash_deployed": 117514.0,
-        "portfolio_before": 117514.0,
-        "portfolio_after": 114129.0,
-        "cash_after": 114129.0
+        "shares": 239428.3,
+        "cash_deployed": 123752.0,
+        "portfolio_before": 123752.0,
+        "portfolio_after": 120187.0,
+        "cash_after": 120187.0
       },
       {
         "entry_date": "2012-12-17",
@@ -237,11 +237,11 @@
         "signal_type": "FTD",
         "duration_days": 7,
         "outcome": "Loss",
-        "shares": 221510.13,
-        "cash_deployed": 114293.0,
-        "portfolio_before": 114293.0,
-        "portfolio_after": 113325.0,
-        "cash_after": 113325.0
+        "shares": 233267.71,
+        "cash_deployed": 120359.0,
+        "portfolio_before": 120359.0,
+        "portfolio_after": 119340.0,
+        "cash_after": 119340.0
       }
     ]
   },
@@ -258,8 +258,8 @@
     "worst_trade": "2013-01-04 to 2013-06-20 (+18.2%)",
     "tqqq_buy_hold_pct": 119.28,
     "qqq_buy_hold_pct": 32.43,
-    "starting_value": 113426.4,
-    "ending_value": 245920.04,
+    "starting_value": 119446.97,
+    "ending_value": 258973.23,
     "trades": [
       {
         "entry_date": "2013-01-04",
@@ -270,11 +270,11 @@
         "signal_type": "MACD",
         "duration_days": 167,
         "outcome": "Win",
-        "shares": 207009.18,
-        "cash_deployed": 113467.0,
-        "portfolio_before": 113467.0,
-        "portfolio_after": 134176.0,
-        "cash_after": 134176.0
+        "shares": 217997.08,
+        "cash_deployed": 119490.0,
+        "portfolio_before": 119490.0,
+        "portfolio_after": 141298.0,
+        "cash_after": 141298.0
       }
     ]
   },
@@ -291,8 +291,8 @@
     "worst_trade": "2014-02-10 to 2014-03-27 (-1.9%)",
     "tqqq_buy_hold_pct": 60.85,
     "qqq_buy_hold_pct": 20.12,
-    "starting_value": 240173.65,
-    "ending_value": 335787.04,
+    "starting_value": 252921.91,
+    "ending_value": 353610.16,
     "trades": [
       {
         "entry_date": "2013-07-01",
@@ -303,11 +303,11 @@
         "signal_type": "MACD",
         "duration_days": 212,
         "outcome": "Win",
-        "shares": 199656.21,
-        "cash_deployed": 134344.0,
-        "portfolio_before": 134344.0,
-        "portfolio_after": 220300.0,
-        "cash_after": 220300.0
+        "shares": 210253.74,
+        "cash_deployed": 141474.0,
+        "portfolio_before": 141474.0,
+        "portfolio_after": 231993.0,
+        "cash_after": 231993.0
       },
       {
         "entry_date": "2014-02-10",
@@ -318,11 +318,11 @@
         "signal_type": "MACD",
         "duration_days": 45,
         "outcome": "Loss",
-        "shares": 182119.58,
-        "cash_deployed": 220615.0,
-        "portfolio_before": 220615.0,
-        "portfolio_after": 216385.0,
-        "cash_after": 216385.0
+        "shares": 191786.33,
+        "cash_deployed": 232325.0,
+        "portfolio_before": 232325.0,
+        "portfolio_after": 227871.0,
+        "cash_after": 227871.0
       },
       {
         "entry_date": "2014-04-07",
@@ -333,11 +333,11 @@
         "signal_type": "MACD",
         "duration_days": 186,
         "outcome": "Win",
-        "shares": 191732.09,
-        "cash_deployed": 216656.0,
-        "portfolio_before": 216656.0,
-        "portfolio_after": 285509.0,
-        "cash_after": 285509.0
+        "shares": 201908.98,
+        "cash_deployed": 228156.0,
+        "portfolio_before": 228156.0,
+        "portfolio_after": 300664.0,
+        "cash_after": 300664.0
       },
       {
         "entry_date": "2014-10-20",
@@ -348,17 +348,17 @@
         "signal_type": "MACD",
         "duration_days": 56,
         "outcome": "Win",
-        "shares": 192476.49,
-        "cash_deployed": 285815.0,
-        "portfolio_before": 285815.0,
-        "portfolio_after": 353372.0,
-        "cash_after": 353372.0
+        "shares": 202692.85,
+        "cash_deployed": 300986.0,
+        "portfolio_before": 300986.0,
+        "portfolio_after": 372129.0,
+        "cash_after": 372129.0
       }
     ]
   },
   {
     "year": 2015,
-    "total_return_pct": -2.26,
+    "total_return_pct": -0.41,
     "num_trades": 2,
     "win_rate_pct": 50.0,
     "avg_win_pct": 1.69,
@@ -369,8 +369,8 @@
     "worst_trade": "2014-12-26 to 2015-01-06 (-13.7%)",
     "tqqq_buy_hold_pct": 18.2,
     "qqq_buy_hold_pct": 9.77,
-    "starting_value": 333030.51,
-    "ending_value": 325493.94,
+    "starting_value": 350707.33,
+    "ending_value": 349272.92,
     "trades": [
       {
         "entry_date": "2014-12-26",
@@ -381,11 +381,11 @@
         "signal_type": "MACD",
         "duration_days": 11,
         "outcome": "Loss",
-        "shares": 173540.98,
-        "cash_deployed": 353877.0,
-        "portfolio_before": 353877.0,
-        "portfolio_after": 305430.0,
-        "cash_after": 305430.0
+        "shares": 182752.33,
+        "cash_deployed": 372660.0,
+        "portfolio_before": 372660.0,
+        "portfolio_after": 321642.0,
+        "cash_after": 321642.0
       },
       {
         "entry_date": "2015-01-16",
@@ -396,44 +396,44 @@
         "signal_type": "MACD",
         "duration_days": 217,
         "outcome": "Win",
-        "shares": 170405.58,
-        "cash_deployed": 305867.0,
-        "portfolio_before": 305867.0,
-        "portfolio_after": 311041.0,
-        "cash_after": 311041.0
+        "shares": 179450.55,
+        "cash_deployed": 322102.0,
+        "portfolio_before": 322102.0,
+        "portfolio_after": 327550.0,
+        "cash_after": 327550.0
       }
     ]
   },
   {
     "year": 2016,
-    "total_return_pct": 10.26,
+    "total_return_pct": 16.97,
     "num_trades": 6,
-    "win_rate_pct": 33.3,
-    "avg_win_pct": 9.02,
-    "avg_loss_pct": -5.2,
+    "win_rate_pct": 50.0,
+    "avg_win_pct": 6.25,
+    "avg_loss_pct": -3.68,
     "max_win_pct": 17.98,
-    "max_loss_pct": -7.31,
+    "max_loss_pct": -4.88,
     "best_trade": "2016-06-30 to 2016-11-03 (+18.0%)",
-    "worst_trade": "2016-03-29 to 2016-04-28 (-7.3%)",
+    "worst_trade": "2016-05-24 to 2016-06-17 (-4.9%)",
     "tqqq_buy_hold_pct": 18.63,
     "qqq_buy_hold_pct": 9.41,
-    "starting_value": 305604.65,
-    "ending_value": 336967.66,
+    "starting_value": 338131.79,
+    "ending_value": 395519.11,
     "trades": [
       {
         "entry_date": "2015-10-15",
         "exit_date": "2016-01-06",
         "entry_price": 2.05,
         "exit_price": 2.05,
-        "return_pct": -5.88,
+        "return_pct": 0.7,
         "signal_type": "FTD",
         "duration_days": 83,
-        "outcome": "Loss",
-        "shares": 76532.69,
-        "cash_deployed": 156579.0,
-        "portfolio_before": 313158.0,
-        "portfolio_after": 294748.0,
-        "cash_after": 294748.0
+        "outcome": "Win",
+        "shares": 80594.96,
+        "cash_deployed": 164890.0,
+        "portfolio_before": 329780.0,
+        "portfolio_after": 332094.0,
+        "cash_after": 332094.0
       },
       {
         "entry_date": "2016-03-01",
@@ -444,26 +444,26 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Win",
-        "shares": 80547.68,
-        "cash_deployed": 148351.0,
-        "portfolio_before": 296702.0,
-        "portfolio_after": 296888.0,
-        "cash_after": 296888.0
+        "shares": 90753.31,
+        "cash_deployed": 167147.0,
+        "portfolio_before": 334295.0,
+        "portfolio_after": 334505.0,
+        "cash_after": 334505.0
       },
       {
         "entry_date": "2016-03-29",
         "exit_date": "2016-04-28",
         "entry_price": 2.02,
         "exit_price": 1.87,
-        "return_pct": -7.31,
+        "return_pct": -3.43,
         "signal_type": "FTD",
         "duration_days": 30,
         "outcome": "Loss",
-        "shares": 73901.8,
-        "cash_deployed": 148922.0,
-        "portfolio_before": 297844.0,
-        "portfolio_after": 276084.0,
-        "cash_after": 276084.0
+        "shares": 83265.4,
+        "cash_deployed": 167791.0,
+        "portfolio_before": 335582.0,
+        "portfolio_after": 324056.0,
+        "cash_after": 324056.0
       },
       {
         "entry_date": "2016-05-10",
@@ -474,11 +474,11 @@
         "signal_type": "MACD",
         "duration_days": 1,
         "outcome": "Loss",
-        "shares": 144042.82,
-        "cash_deployed": 276479.0,
-        "portfolio_before": 276479.0,
-        "portfolio_after": 268928.0,
-        "cash_after": 268928.0
+        "shares": 169071.65,
+        "cash_deployed": 324520.0,
+        "portfolio_before": 324520.0,
+        "portfolio_after": 315656.0,
+        "cash_after": 315656.0
       },
       {
         "entry_date": "2016-05-24",
@@ -489,11 +489,11 @@
         "signal_type": "MACD",
         "duration_days": 24,
         "outcome": "Loss",
-        "shares": 136534.31,
-        "cash_deployed": 269360.0,
-        "portfolio_before": 269360.0,
-        "portfolio_after": 256211.0,
-        "cash_after": 256211.0
+        "shares": 160258.49,
+        "cash_deployed": 316164.0,
+        "portfolio_before": 316164.0,
+        "portfolio_after": 300730.0,
+        "cash_after": 300730.0
       },
       {
         "entry_date": "2016-06-30",
@@ -504,11 +504,11 @@
         "signal_type": "MACD",
         "duration_days": 126,
         "outcome": "Win",
-        "shares": 134169.87,
-        "cash_deployed": 256623.0,
-        "portfolio_before": 256623.0,
-        "portfolio_after": 302768.0,
-        "cash_after": 302768.0
+        "shares": 157483.2,
+        "cash_deployed": 301213.0,
+        "portfolio_before": 301213.0,
+        "portfolio_after": 355377.0,
+        "cash_after": 355377.0
       }
     ]
   },
@@ -525,8 +525,8 @@
     "worst_trade": "2016-11-14 to 2017-06-30 (+70.6%)",
     "tqqq_buy_hold_pct": 112.91,
     "qqq_buy_hold_pct": 31.49,
-    "starting_value": 345125.19,
-    "ending_value": 718029.36,
+    "starting_value": 405093.98,
+    "ending_value": 842793.58,
     "trades": [
       {
         "entry_date": "2016-11-14",
@@ -537,11 +537,11 @@
         "signal_type": "MACD",
         "duration_days": 228,
         "outcome": "Win",
-        "shares": 133375.28,
-        "cash_deployed": 303146.0,
-        "portfolio_before": 303146.0,
-        "portfolio_after": 517304.0,
-        "cash_after": 517304.0
+        "shares": 156550.57,
+        "cash_deployed": 355821.0,
+        "portfolio_before": 355821.0,
+        "portfolio_after": 607190.0,
+        "cash_after": 607190.0
       }
     ]
   },
@@ -558,8 +558,8 @@
     "worst_trade": "2018-10-18 to 2018-10-24 (-13.6%)",
     "tqqq_buy_hold_pct": -23.7,
     "qqq_buy_hold_pct": -1.85,
-    "starting_value": 754883.06,
-    "ending_value": 655344.07,
+    "starting_value": 886051.17,
+    "ending_value": 769216.06,
     "trades": [
       {
         "entry_date": "2017-07-10",
@@ -570,11 +570,11 @@
         "signal_type": "MACD",
         "duration_days": 210,
         "outcome": "Win",
-        "shares": 130331.6,
-        "cash_deployed": 517766.0,
-        "portfolio_before": 517766.0,
-        "portfolio_after": 742512.0,
-        "cash_after": 742512.0
+        "shares": 152977.94,
+        "cash_deployed": 607733.0,
+        "portfolio_before": 607733.0,
+        "portfolio_after": 871531.0,
+        "cash_after": 871531.0
       },
       {
         "entry_date": "2018-02-15",
@@ -585,11 +585,11 @@
         "signal_type": "MACD",
         "duration_days": 35,
         "outcome": "Loss",
-        "shares": 115522.88,
-        "cash_deployed": 743574.0,
-        "portfolio_before": 743574.0,
-        "portfolio_after": 700860.0,
-        "cash_after": 700860.0
+        "shares": 135596.05,
+        "cash_deployed": 872777.0,
+        "portfolio_before": 872777.0,
+        "portfolio_after": 822640.0,
+        "cash_after": 822640.0
       },
       {
         "entry_date": "2018-04-02",
@@ -600,11 +600,11 @@
         "signal_type": "MACD",
         "duration_days": 86,
         "outcome": "Win",
-        "shares": 134712.45,
-        "cash_deployed": 701611.0,
-        "portfolio_before": 701611.0,
-        "portfolio_after": 890630.0,
-        "cash_after": 890630.0
+        "shares": 158119.96,
+        "cash_deployed": 823522.0,
+        "portfolio_before": 823522.0,
+        "portfolio_after": 1045385.0,
+        "cash_after": 1045385.0
       },
       {
         "entry_date": "2018-07-09",
@@ -615,11 +615,11 @@
         "signal_type": "MACD",
         "duration_days": 21,
         "outcome": "Loss",
-        "shares": 119218.59,
-        "cash_deployed": 891743.0,
-        "portfolio_before": 891743.0,
-        "portfolio_after": 855523.0,
-        "cash_after": 855523.0
+        "shares": 139933.93,
+        "cash_deployed": 1046692.0,
+        "portfolio_before": 1046692.0,
+        "portfolio_after": 1004177.0,
+        "cash_after": 1004177.0
       },
       {
         "entry_date": "2018-08-09",
@@ -630,11 +630,11 @@
         "signal_type": "MACD",
         "duration_days": 60,
         "outcome": "Loss",
-        "shares": 106846.96,
-        "cash_deployed": 856746.0,
-        "portfolio_before": 856746.0,
-        "portfolio_after": 809516.0,
-        "cash_after": 809516.0
+        "shares": 125412.6,
+        "cash_deployed": 1005613.0,
+        "portfolio_before": 1005613.0,
+        "portfolio_after": 950177.0,
+        "cash_after": 950177.0
       },
       {
         "entry_date": "2018-10-18",
@@ -645,11 +645,11 @@
         "signal_type": "MACD",
         "duration_days": 6,
         "outcome": "Loss",
-        "shares": 120150.29,
-        "cash_deployed": 810674.0,
-        "portfolio_before": 810674.0,
-        "portfolio_after": 700303.0,
-        "cash_after": 700303.0
+        "shares": 141027.5,
+        "cash_deployed": 951535.0,
+        "portfolio_before": 951535.0,
+        "portfolio_after": 821987.0,
+        "cash_after": 821987.0
       },
       {
         "entry_date": "2018-11-07",
@@ -660,11 +660,11 @@
         "signal_type": "FTD",
         "duration_days": 2,
         "outcome": "Loss",
-        "shares": 102457.92,
-        "cash_deployed": 701554.0,
-        "portfolio_before": 701554.0,
-        "portfolio_after": 654556.0,
-        "cash_after": 654556.0
+        "shares": 120260.92,
+        "cash_deployed": 823456.0,
+        "portfolio_before": 823456.0,
+        "portfolio_after": 768291.0,
+        "cash_after": 768291.0
       },
       {
         "entry_date": "2018-11-28",
@@ -675,11 +675,11 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Loss",
-        "shares": 54934.91,
-        "cash_deployed": 327980.0,
-        "portfolio_before": 655960.0,
-        "portfolio_after": 653008.0,
-        "cash_after": 653008.0
+        "shares": 64480.36,
+        "cash_deployed": 384970.0,
+        "portfolio_before": 769939.0,
+        "portfolio_after": 766474.0,
+        "cash_after": 766474.0
       }
     ]
   },
@@ -696,8 +696,8 @@
     "worst_trade": "2019-05-24 to 2019-06-03 (-13.0%)",
     "tqqq_buy_hold_pct": 130.54,
     "qqq_buy_hold_pct": 38.41,
-    "starting_value": 655461.09,
-    "ending_value": 807732.33,
+    "starting_value": 769353.42,
+    "ending_value": 948083.07,
     "trades": [
       {
         "entry_date": "2019-02-12",
@@ -708,11 +708,11 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Win",
-        "shares": 56158.49,
-        "cash_deployed": 329373.0,
-        "portfolio_before": 658746.0,
-        "portfolio_after": 659475.0,
-        "cash_after": 659475.0
+        "shares": 65916.54,
+        "cash_deployed": 386605.0,
+        "portfolio_before": 773209.0,
+        "portfolio_after": 774065.0,
+        "cash_after": 774065.0
       },
       {
         "entry_date": "2019-03-01",
@@ -723,11 +723,11 @@
         "signal_type": "MACD",
         "duration_days": 6,
         "outcome": "Loss",
-        "shares": 106386.44,
-        "cash_deployed": 660772.0,
-        "portfolio_before": 660772.0,
-        "portfolio_after": 627390.0,
-        "cash_after": 627390.0
+        "shares": 124872.07,
+        "cash_deployed": 775587.0,
+        "portfolio_before": 775587.0,
+        "portfolio_after": 736405.0,
+        "cash_after": 736405.0
       },
       {
         "entry_date": "2019-03-18",
@@ -738,11 +738,11 @@
         "signal_type": "MACD",
         "duration_days": 57,
         "outcome": "Win",
-        "shares": 94325.68,
-        "cash_deployed": 628175.0,
-        "portfolio_before": 628175.0,
-        "portfolio_after": 636503.0,
-        "cash_after": 636503.0
+        "shares": 110715.64,
+        "cash_deployed": 737326.0,
+        "portfolio_before": 737326.0,
+        "portfolio_after": 747102.0,
+        "cash_after": 747102.0
       },
       {
         "entry_date": "2019-05-24",
@@ -753,11 +753,11 @@
         "signal_type": "MACD",
         "duration_days": 10,
         "outcome": "Loss",
-        "shares": 98793.9,
-        "cash_deployed": 637413.0,
-        "portfolio_before": 637413.0,
-        "portfolio_after": 554288.0,
-        "cash_after": 554288.0
+        "shares": 115960.23,
+        "cash_deployed": 748170.0,
+        "portfolio_before": 748170.0,
+        "portfolio_after": 650600.0,
+        "cash_after": 650600.0
       },
       {
         "entry_date": "2019-06-13",
@@ -768,11 +768,11 @@
         "signal_type": "MACD",
         "duration_days": 53,
         "outcome": "Loss",
-        "shares": 79653.02,
-        "cash_deployed": 555080.0,
-        "portfolio_before": 555080.0,
-        "portfolio_after": 525135.0,
-        "cash_after": 525135.0
+        "shares": 93493.46,
+        "cash_deployed": 651531.0,
+        "portfolio_before": 651531.0,
+        "portfolio_after": 616382.0,
+        "cash_after": 616382.0
       }
     ]
   },
@@ -789,8 +789,8 @@
     "worst_trade": "2020-06-22 to 2020-07-24 (+9.3%)",
     "tqqq_buy_hold_pct": 100.13,
     "qqq_buy_hold_pct": 45.97,
-    "starting_value": 847768.75,
-    "ending_value": 2264320.25,
+    "starting_value": 995076.53,
+    "ending_value": 2657766.99,
     "trades": [
       {
         "entry_date": "2019-08-15",
@@ -801,11 +801,11 @@
         "signal_type": "MACD",
         "duration_days": 193,
         "outcome": "Win",
-        "shares": 78167.87,
-        "cash_deployed": 525886.0,
-        "portfolio_before": 525886.0,
-        "portfolio_after": 892938.0,
-        "cash_after": 892938.0
+        "shares": 91750.26,
+        "cash_deployed": 617263.0,
+        "portfolio_before": 617263.0,
+        "portfolio_after": 1048095.0,
+        "cash_after": 1048095.0
       },
       {
         "entry_date": "2020-05-04",
@@ -816,11 +816,11 @@
         "signal_type": "MACD",
         "duration_days": 38,
         "outcome": "Win",
-        "shares": 114750.2,
-        "cash_deployed": 900785.0,
-        "portfolio_before": 900785.0,
-        "portfolio_after": 1137113.0,
-        "cash_after": 1137113.0
+        "shares": 134689.11,
+        "cash_deployed": 1057305.0,
+        "portfolio_before": 1057305.0,
+        "portfolio_after": 1334697.0,
+        "cash_after": 1334697.0
       },
       {
         "entry_date": "2020-06-22",
@@ -831,11 +831,11 @@
         "signal_type": "MACD",
         "duration_days": 32,
         "outcome": "Win",
-        "shares": 98048.28,
-        "cash_deployed": 1138535.0,
-        "portfolio_before": 1138535.0,
-        "portfolio_after": 1244241.0,
-        "cash_after": 1244241.0
+        "shares": 115085.07,
+        "cash_deployed": 1336366.0,
+        "portfolio_before": 1336366.0,
+        "portfolio_after": 1460439.0,
+        "cash_after": 1460439.0
       },
       {
         "entry_date": "2020-08-03",
@@ -846,11 +846,11 @@
         "signal_type": "MACD",
         "duration_days": 31,
         "outcome": "Win",
-        "shares": 84250.37,
-        "cash_deployed": 1245574.0,
-        "portfolio_before": 1245574.0,
-        "portfolio_after": 1485978.0,
-        "cash_after": 1485978.0
+        "shares": 98889.65,
+        "cash_deployed": 1462005.0,
+        "portfolio_before": 1462005.0,
+        "portfolio_after": 1744181.0,
+        "cash_after": 1744181.0
       }
     ]
   },
@@ -867,8 +867,8 @@
     "worst_trade": "2021-02-08 to 2021-02-22 (-9.9%)",
     "tqqq_buy_hold_pct": 91.35,
     "qqq_buy_hold_pct": 29.24,
-    "starting_value": 2165303.13,
-    "ending_value": 4304252.36,
+    "starting_value": 2541544.03,
+    "ending_value": 5052157.05,
     "trades": [
       {
         "entry_date": "2020-10-28",
@@ -879,11 +879,11 @@
         "signal_type": "MACD",
         "duration_days": 93,
         "outcome": "Win",
-        "shares": 104321.04,
-        "cash_deployed": 1496095.0,
-        "portfolio_before": 1496095.0,
-        "portfolio_after": 2253609.0,
-        "cash_after": 2253609.0
+        "shares": 122447.78,
+        "cash_deployed": 1756056.0,
+        "portfolio_before": 1756056.0,
+        "portfolio_after": 2645194.0,
+        "cash_after": 2645194.0
       },
       {
         "entry_date": "2021-02-08",
@@ -894,11 +894,11 @@
         "signal_type": "MACD",
         "duration_days": 14,
         "outcome": "Loss",
-        "shares": 88003.36,
-        "cash_deployed": 2256024.0,
-        "portfolio_before": 2256024.0,
-        "portfolio_after": 2032019.0,
-        "cash_after": 2032019.0
+        "shares": 103294.75,
+        "cash_deployed": 2648029.0,
+        "portfolio_before": 2648029.0,
+        "portfolio_after": 2385101.0,
+        "cash_after": 2385101.0
       },
       {
         "entry_date": "2021-03-04",
@@ -909,11 +909,11 @@
         "signal_type": "MACD",
         "duration_days": 67,
         "outcome": "Win",
-        "shares": 106300.23,
-        "cash_deployed": 2034923.0,
-        "portfolio_before": 2034923.0,
-        "portfolio_after": 2436730.0,
-        "cash_after": 2436730.0
+        "shares": 124770.87,
+        "cash_deployed": 2388511.0,
+        "portfolio_before": 2388511.0,
+        "portfolio_after": 2860134.0,
+        "cash_after": 2860134.0
       },
       {
         "entry_date": "2021-05-20",
@@ -924,11 +924,11 @@
         "signal_type": "MACD",
         "duration_days": 123,
         "outcome": "Win",
-        "shares": 104205.25,
-        "cash_deployed": 2440213.0,
-        "portfolio_before": 2440213.0,
-        "portfolio_after": 3321547.0,
-        "cash_after": 3321547.0
+        "shares": 122311.86,
+        "cash_deployed": 2864223.0,
+        "portfolio_before": 2864223.0,
+        "portfolio_after": 3898697.0,
+        "cash_after": 3898697.0
       },
       {
         "entry_date": "2021-09-30",
@@ -939,11 +939,11 @@
         "signal_type": "MACD",
         "duration_days": 62,
         "outcome": "Win",
-        "shares": 111826.62,
-        "cash_deployed": 3326295.0,
-        "portfolio_before": 3326295.0,
-        "portfolio_after": 4141514.0,
-        "cash_after": 4141514.0
+        "shares": 131257.56,
+        "cash_deployed": 3904270.0,
+        "portfolio_before": 3904270.0,
+        "portfolio_after": 4861140.0,
+        "cash_after": 4861140.0
       }
     ]
   },
@@ -960,8 +960,8 @@
     "worst_trade": "2022-01-18 to 2022-01-20 (-7.2%)",
     "tqqq_buy_hold_pct": -79.68,
     "qqq_buy_hold_pct": -33.22,
-    "starting_value": 4428465.5,
-    "ending_value": 3904216.28,
+    "starting_value": 5197952.91,
+    "ending_value": 4582609.17,
     "trades": [
       {
         "entry_date": "2021-12-13",
@@ -972,11 +972,11 @@
         "signal_type": "MACD",
         "duration_days": 23,
         "outcome": "Loss",
-        "shares": 108374.01,
-        "cash_deployed": 4147434.0,
-        "portfolio_before": 4147434.0,
-        "portfolio_after": 3864848.0,
-        "cash_after": 3864848.0
+        "shares": 127205.01,
+        "cash_deployed": 4868089.0,
+        "portfolio_before": 4868089.0,
+        "portfolio_after": 4536402.0,
+        "cash_after": 4536402.0
       },
       {
         "entry_date": "2022-01-18",
@@ -987,11 +987,11 @@
         "signal_type": "MACD",
         "duration_days": 2,
         "outcome": "Loss",
-        "shares": 121523.44,
-        "cash_deployed": 3870372.0,
-        "portfolio_before": 3870372.0,
-        "portfolio_after": 3591223.0,
-        "cash_after": 3591223.0
+        "shares": 142639.23,
+        "cash_deployed": 4542886.0,
+        "portfolio_before": 4542886.0,
+        "portfolio_after": 4215230.0,
+        "cash_after": 4215230.0
       },
       {
         "entry_date": "2022-03-18",
@@ -1002,11 +1002,11 @@
         "signal_type": "FTD",
         "duration_days": 3,
         "outcome": "Loss",
-        "shares": 71222.23,
-        "cash_deployed": 1808482.0,
-        "portfolio_before": 3616964.0,
-        "portfolio_after": 3604362.0,
-        "cash_after": 3604362.0
+        "shares": 83597.73,
+        "cash_deployed": 2122722.0,
+        "portfolio_before": 4245444.0,
+        "portfolio_after": 4230652.0,
+        "cash_after": 4230652.0
       },
       {
         "entry_date": "2022-07-27",
@@ -1017,11 +1017,11 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Win",
-        "shares": 124705.78,
-        "cash_deployed": 1830722.0,
-        "portfolio_before": 3661445.0,
-        "portfolio_after": 3714180.0,
-        "cash_after": 3714180.0
+        "shares": 146374.54,
+        "cash_deployed": 2148827.0,
+        "portfolio_before": 4297653.0,
+        "portfolio_after": 4359552.0,
+        "cash_after": 4359552.0
       },
       {
         "entry_date": "2022-11-10",
@@ -1032,11 +1032,11 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Win",
-        "shares": 183701.17,
-        "cash_deployed": 1881791.0,
-        "portfolio_before": 3763582.0,
-        "portfolio_after": 3870947.0,
-        "cash_after": 3870947.0
+        "shares": 215620.91,
+        "cash_deployed": 2208769.0,
+        "portfolio_before": 4417537.0,
+        "portfolio_after": 4543559.0,
+        "cash_after": 4543559.0
       },
       {
         "entry_date": "2022-11-30",
@@ -1047,11 +1047,11 @@
         "signal_type": "FTD",
         "duration_days": 1,
         "outcome": "Win",
-        "shares": 172389.35,
-        "cash_deployed": 1939625.0,
-        "portfolio_before": 3879250.0,
-        "portfolio_after": 3890299.0,
-        "cash_after": 3890299.0
+        "shares": 202343.56,
+        "cash_deployed": 2276652.0,
+        "portfolio_before": 4553305.0,
+        "portfolio_after": 4566273.0,
+        "cash_after": 4566273.0
       }
     ]
   },
@@ -1068,8 +1068,8 @@
     "worst_trade": "2023-10-02 to 2023-10-20 (-6.5%)",
     "tqqq_buy_hold_pct": 204.92,
     "qqq_buy_hold_pct": 55.91,
-    "starting_value": 3904913.47,
-    "ending_value": 8429883.22,
+    "starting_value": 4583427.49,
+    "ending_value": 9894640.89,
     "trades": [
       {
         "entry_date": "2023-02-24",
@@ -1080,11 +1080,11 @@
         "signal_type": "MACD",
         "duration_days": 14,
         "outcome": "Loss",
-        "shares": 376066.37,
-        "cash_deployed": 3930095.0,
-        "portfolio_before": 3930095.0,
-        "portfolio_after": 3769426.0,
-        "cash_after": 3769426.0
+        "shares": 441411.19,
+        "cash_deployed": 4612985.0,
+        "portfolio_before": 4612985.0,
+        "portfolio_after": 4424396.0,
+        "cash_after": 4424396.0
       },
       {
         "entry_date": "2023-03-20",
@@ -1095,11 +1095,11 @@
         "signal_type": "MACD",
         "duration_days": 142,
         "outcome": "Win",
-        "shares": 316580.1,
-        "cash_deployed": 3773467.0,
-        "portfolio_before": 3773467.0,
-        "portfolio_after": 6089192.0,
-        "cash_after": 6089192.0
+        "shares": 371588.52,
+        "cash_deployed": 4429139.0,
+        "portfolio_before": 4429139.0,
+        "portfolio_after": 7147238.0,
+        "cash_after": 7147238.0
       },
       {
         "entry_date": "2023-08-21",
@@ -1110,11 +1110,11 @@
         "signal_type": "MACD",
         "duration_days": 31,
         "outcome": "Loss",
-        "shares": 329910.06,
-        "cash_deployed": 6097896.0,
-        "portfolio_before": 6097896.0,
-        "portfolio_after": 5708852.0,
-        "cash_after": 5708852.0
+        "shares": 387234.6,
+        "cash_deployed": 7157454.0,
+        "portfolio_before": 7157454.0,
+        "portfolio_after": 6700811.0,
+        "cash_after": 6700811.0
       },
       {
         "entry_date": "2023-10-02",
@@ -1125,11 +1125,11 @@
         "signal_type": "MACD",
         "duration_days": 18,
         "outcome": "Loss",
-        "shares": 322442.77,
-        "cash_deployed": 5715992.0,
-        "portfolio_before": 5715992.0,
-        "portfolio_after": 5342973.0,
-        "cash_after": 5342973.0
+        "shares": 378469.81,
+        "cash_deployed": 6709191.0,
+        "portfolio_before": 6709191.0,
+        "portfolio_after": 6271355.0,
+        "cash_after": 6271355.0
       }
     ]
   },
@@ -1146,8 +1146,8 @@
     "worst_trade": "2024-07-29 to 2024-08-02 (-10.3%)",
     "tqqq_buy_hold_pct": 66.72,
     "qqq_buy_hold_pct": 27.74,
-    "starting_value": 8002569.82,
-    "ending_value": 13497960.09,
+    "starting_value": 9393076.98,
+    "ending_value": 15843325.75,
     "trades": [
       {
         "entry_date": "2023-10-30",
@@ -1158,11 +1158,11 @@
         "signal_type": "MACD",
         "duration_days": 170,
         "outcome": "Win",
-        "shares": 340571.29,
-        "cash_deployed": 5348700.0,
-        "portfolio_before": 5348700.0,
-        "portfolio_after": 8962579.0,
-        "cash_after": 8962579.0
+        "shares": 399748.17,
+        "cash_deployed": 6278077.0,
+        "portfolio_before": 6278077.0,
+        "portfolio_after": 10519895.0,
+        "cash_after": 10519895.0
       },
       {
         "entry_date": "2024-04-29",
@@ -1173,11 +1173,11 @@
         "signal_type": "MACD",
         "duration_days": 79,
         "outcome": "Win",
-        "shares": 327462.13,
-        "cash_deployed": 8975390.0,
-        "portfolio_before": 8975390.0,
-        "portfolio_after": 11942627.0,
-        "cash_after": 11942627.0
+        "shares": 384361.16,
+        "cash_deployed": 10534933.0,
+        "portfolio_before": 10534933.0,
+        "portfolio_after": 14017746.0,
+        "cash_after": 14017746.0
       },
       {
         "entry_date": "2024-07-29",
@@ -1188,11 +1188,11 @@
         "signal_type": "MACD",
         "duration_days": 4,
         "outcome": "Loss",
-        "shares": 371463.91,
-        "cash_deployed": 11959698.0,
-        "portfolio_before": 11959698.0,
-        "portfolio_after": 10731938.0,
-        "cash_after": 10731938.0
+        "shares": 436008.49,
+        "cash_deployed": 14037784.0,
+        "portfolio_before": 14037784.0,
+        "portfolio_after": 12596692.0,
+        "cash_after": 12596692.0
       },
       {
         "entry_date": "2024-08-12",
@@ -1203,11 +1203,11 @@
         "signal_type": "MACD",
         "duration_days": 22,
         "outcome": "Win",
-        "shares": 368661.28,
-        "cash_deployed": 10743441.0,
-        "portfolio_before": 10743441.0,
-        "portfolio_after": 11305548.0,
-        "cash_after": 11305548.0
+        "shares": 432718.83,
+        "cash_deployed": 12610194.0,
+        "portfolio_before": 12610194.0,
+        "portfolio_after": 13269966.0,
+        "cash_after": 13269966.0
       },
       {
         "entry_date": "2024-09-13",
@@ -1218,11 +1218,11 @@
         "signal_type": "MACD",
         "duration_days": 96,
         "outcome": "Win",
-        "shares": 341780.11,
-        "cash_deployed": 11321709.0,
-        "portfolio_before": 11321709.0,
-        "portfolio_after": 13843981.0,
-        "cash_after": 13843981.0
+        "shares": 401166.81,
+        "cash_deployed": 13288935.0,
+        "portfolio_before": 13288935.0,
+        "portfolio_after": 16249470.0,
+        "cash_after": 16249470.0
       }
     ]
   },
@@ -1239,8 +1239,8 @@
     "worst_trade": "2025-03-25 to 2025-03-26 (-5.6%)",
     "tqqq_buy_hold_pct": 35.21,
     "qqq_buy_hold_pct": 21.01,
-    "starting_value": 13412669.71,
-    "ending_value": 18015165.41,
+    "starting_value": 15743215.55,
+    "ending_value": 21145428.25,
     "trades": [
       {
         "entry_date": "2024-12-30",
@@ -1251,11 +1251,11 @@
         "signal_type": "MACD",
         "duration_days": 57,
         "outcome": "Loss",
-        "shares": 344557.91,
-        "cash_deployed": 13861295.0,
-        "portfolio_before": 13861295.0,
-        "portfolio_after": 13240387.0,
-        "cash_after": 13240387.0
+        "shares": 404427.28,
+        "cash_deployed": 16269793.0,
+        "portfolio_before": 16269793.0,
+        "portfolio_after": 15540997.0,
+        "cash_after": 15540997.0
       },
       {
         "entry_date": "2025-03-25",
@@ -1266,11 +1266,11 @@
         "signal_type": "MACD",
         "duration_days": 1,
         "outcome": "Loss",
-        "shares": 398755.99,
-        "cash_deployed": 13287754.0,
-        "portfolio_before": 13287754.0,
-        "portfolio_after": 12548841.0,
-        "cash_after": 12548841.0
+        "shares": 468042.76,
+        "cash_deployed": 15596595.0,
+        "portfolio_before": 15596595.0,
+        "portfolio_after": 14729294.0,
+        "cash_after": 14729294.0
       },
       {
         "entry_date": "2025-05-30",
@@ -1281,11 +1281,11 @@
         "signal_type": "MACD",
         "duration_days": 161,
         "outcome": "Win",
-        "shares": 363957.8,
-        "cash_deployed": 12650077.0,
-        "portfolio_before": 12650077.0,
-        "portfolio_after": 19187908.0,
-        "cash_after": 19187908.0
+        "shares": 427198.08,
+        "cash_deployed": 14848120.0,
+        "portfolio_before": 14848120.0,
+        "portfolio_after": 22521945.0,
+        "cash_after": 22521945.0
       },
       {
         "entry_date": "2025-11-17",
@@ -1296,11 +1296,11 @@
         "signal_type": "MACD",
         "duration_days": 30,
         "outcome": "Loss",
-        "shares": 377665.09,
-        "cash_deployed": 19208476.0,
-        "portfolio_before": 19208476.0,
-        "portfolio_after": 18596741.0,
-        "cash_after": 18596741.0
+        "shares": 443287.07,
+        "cash_deployed": 22546087.0,
+        "portfolio_before": 22546087.0,
+        "portfolio_after": 21828057.0,
+        "cash_after": 21828057.0
       }
     ]
   },
@@ -1317,8 +1317,8 @@
     "worst_trade": "2026-02-17 to 2026-03-20 (-10.9%)",
     "tqqq_buy_hold_pct": -5.92,
     "qqq_buy_hold_pct": -0.21,
-    "starting_value": 17888730.14,
-    "ending_value": 15209973.13,
+    "starting_value": 20997023.95,
+    "ending_value": 17852813.9,
     "trades": [
       {
         "entry_date": "2025-12-29",
@@ -1329,11 +1329,11 @@
         "signal_type": "MACD",
         "duration_days": 37,
         "outcome": "Loss",
-        "shares": 342279.03,
-        "cash_deployed": 18619999.0,
-        "portfolio_before": 18619999.0,
-        "portfolio_after": 17003691.0,
-        "cash_after": 17003691.0
+        "shares": 401752.44,
+        "cash_deployed": 21855356.0,
+        "portfolio_before": 21855356.0,
+        "portfolio_after": 19958203.0,
+        "cash_after": 19958203.0
       },
       {
         "entry_date": "2026-02-17",
@@ -1344,11 +1344,11 @@
         "signal_type": "MACD",
         "duration_days": 31,
         "outcome": "Loss",
-        "shares": 352764.24,
-        "cash_deployed": 17027997.0,
-        "portfolio_before": 17027997.0,
-        "portfolio_after": 15171999.0,
-        "cash_after": 15171999.0
+        "shares": 414059.53,
+        "cash_deployed": 19986733.0,
+        "portfolio_before": 19986733.0,
+        "portfolio_after": 17808242.0,
+        "cash_after": 17808242.0
       },
       {
         "entry_date": "2026-04-10",
@@ -1359,11 +1359,11 @@
         "signal_type": "MACD",
         "duration_days": 0,
         "outcome": "Loss",
-        "shares": 309334.43,
-        "cash_deployed": 15209973.0,
-        "portfolio_before": 15209973.0,
-        "portfolio_after": 15209973.0,
-        "cash_after": 15209973.0
+        "shares": 363083.48,
+        "cash_deployed": 17852814.0,
+        "portfolio_before": 17852814.0,
+        "portfolio_after": 17852814.0,
+        "cash_after": 17852814.0
       }
     ]
   }

@@ -287,19 +287,6 @@ def _run_continuous(start_year: int, end_year: int):
             entry_date = None
             peak_portfolio = cash
 
-        elif shares > 0 and abs(target - current_alloc) > 0.15:
-            target_val = total * target
-            current_val = shares * price
-            if target_val > current_val and cash > 0:
-                add = min(target_val - current_val, cash)
-                shares += add / price
-                cash -= add
-            elif target_val < current_val:
-                excess = current_val - target_val
-                sell_sh = excess / price
-                cash += sell_sh * price
-                shares -= sell_sh
-
         equity[date] = cash + shares * price
 
     # Close open position
