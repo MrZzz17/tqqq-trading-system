@@ -216,7 +216,69 @@ def render():
             </div>
         </div>""", unsafe_allow_html=True)
 
-        # (Hero section moved to top of page)
+        # ── Live Status: Current Position & Action Required ──
+        all_trades_flat = [t for r in bt_results for t in r.trades]
+        latest_trade = all_trades_flat[-1] if all_trades_flat else None
+        today_str = dt.date.today().strftime("%B %d, %Y")
+
+        # Determine current position status
+        if latest_trade:
+            last_exit = latest_trade.exit_date
+            last_entry = latest_trade.entry_date
+            is_in_position = (last_exit == bt_results[-1].trades[-1].exit_date
+                              and latest_trade.exit_date >= dt.date.today().strftime("%Y-%m-%d"))
+
+        # Check what action is needed today
+        qqq_close_val = float(qqq.iloc[-1]["Close"])
+        qqq_sma200_val = qqq.iloc[-1].get("SMA_200")
+        qqq_above_200_now = (qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
+                             and qqq_close_val > float(qqq_sma200_val))
+
+        w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
+        macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
+
+        if qqq_above_200_now and macd_pos_now:
+            action_text = "BE INVESTED — QQQ above 200d + MACD positive. Hold 100% TQQQ."
+            action_color = "#17BF63"
+            action_icon = "✅"
+        elif qqq_above_200_now and not macd_pos_now:
+            action_text = "CAUTION — QQQ above 200d but MACD negative. Hold 50% TQQQ, watch for exit."
+            action_color = "#FFAD1F"
+            action_icon = "⚠️"
+        else:
+            action_text = "STAY OUT — QQQ below 200-day SMA. Cash or SGOV only."
+            action_color = "#E0245E"
+            action_icon = "🔴"
+
+        lt = latest_trade
+        lt_color = "#17BF63" if (lt and lt.return_pct > 0) else "#E0245E"
+
+        st.markdown(f"""<div style="border: 1px solid {action_color}33; border-radius: 12px;
+            padding: 18px; background: {action_color}06; margin-bottom: 16px;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                <div>
+                    <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
+                        letter-spacing: 0.1em;">Today — {today_str}</div>
+                    <div style="font-size: 1.2em; font-weight: 700; color: {action_color}; margin-top: 6px;">
+                        {action_icon} {action_text}</div>
+                    <div style="font-size: 0.82em; color: #8899A6; margin-top: 8px;">
+                        All signals evaluate at <b>market close</b>. Execute trades at <b>next day's open</b>.
+                        Check this dashboard after 4pm ET daily.</div>
+                </div>
+                <div style="border-left: 1px solid #38444D; padding-left: 16px;">
+                    <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
+                        letter-spacing: 0.1em;">Last Trade</div>
+                    {'<div style="margin-top: 6px;">' +
+                     f'<span style="font-size: 1.3em; font-weight: 800; color: {lt_color};">{lt.return_pct:+.1f}%</span>' +
+                     f' <span style="background: rgba(29,161,242,0.15); color: #1DA1F2; padding: 2px 8px; border-radius: 20px; font-size: 0.7em; font-weight: 600;">{lt.signal_type}</span>' +
+                     f'</div><div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">' +
+                     f'{lt.entry_date} → {lt.exit_date} ({lt.duration_days}d)</div>' +
+                     f'<div style="font-size: 0.78em; color: #8899A6;">' +
+                     f'${lt.cash_deployed:,.0f} deployed · ${lt.portfolio_after:,.0f} after</div>'
+                     if lt else '<div style="color: #657786;">No trades yet</div>'}
+                </div>
+            </div>
+        </div>""", unsafe_allow_html=True)
 
         # ── Market Health Panel ──
         st.markdown("### Market Health")
