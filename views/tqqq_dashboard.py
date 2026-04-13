@@ -1106,7 +1106,7 @@ in a taxable account.""")
                     @MrZzz</span>
             </a>
             <p style="color: #4b5563; font-size: 0.72em; margin-top: 10px; letter-spacing: 0.02em;">
-                Data: Yahoo Finance &nbsp;&#183;&nbsp;
+                Data: TradingView / Yahoo Finance &nbsp;&#183;&nbsp;
                 Not financial advice &nbsp;&#183;&nbsp;
                 For educational purposes only
             </p>
