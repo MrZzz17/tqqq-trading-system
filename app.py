@@ -18,16 +18,6 @@ st.set_page_config(
 
 st.sidebar.title("TQQQ Trading System")
 st.sidebar.markdown("---")
-st.sidebar.markdown(
-    "**TQQQ Dashboard** -- Phase 1\n\n"
-    "Buy/sell signals, swing tracker, and market status based on "
-    "a rules-based swing trading system."
-)
-st.sidebar.markdown("---")
-st.sidebar.caption(
-    "Data: Yahoo Finance (delayed). "
-    "Not financial advice. For educational purposes only."
-)
 
 # --- Main page redirects to TQQQ dashboard ---
 import pages.tqqq_dashboard as tqqq_page
