@@ -957,7 +957,7 @@ confirmed, trending uptrends.""")
                                 "trigger": sell_trigger,
                                 "conditions": sell_conditions,
                                 "details": [
-                                    f"**Closed:** {t.exit_date} at market close (4:00 PM ET)",
+                                    f"**Closed:** {t.exit_date} at market open (9:30 AM ET)",
                                     f"**Sell price:** ${t.exit_price:.2f} (TQQQ)",
                                     f"**Entered:** {t.entry_date} at ${t.entry_price:.2f}",
                                     f"**Held:** {t.duration_days} days",

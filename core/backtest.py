@@ -157,15 +157,80 @@ def _run_continuous(start_year: int, end_year: int):
     exited = False
     cooldown_until = None
     ftd_cooldown_until = None
+    pending_action = None  # ("buy", alloc, signal) or ("sell", signal_date)
 
-    for date in dates:
-        price = float(tqqq.loc[date, "Close"])
-        total = cash + shares * price
+    for i, date in enumerate(dates):
+        close_price = float(tqqq.loc[date, "Close"])
+        open_price = float(tqqq.loc[date, "Open"])
+        total = cash + shares * close_price
 
         # Idle yield
         if cash > 0:
             cash *= (1 + SGOV_DAILY_YIELD)
-            total = cash + shares * price
+            total = cash + shares * close_price
+
+        # ── Execute pending action from yesterday's signal at today's OPEN ──
+        if pending_action is not None:
+            action_type = pending_action[0]
+            if action_type == "buy":
+                _, alloc, signal = pending_action
+                exec_total = cash + shares * open_price
+                deploy = min(exec_total * alloc, cash)
+                if deploy > 0:
+                    entry_shares = deploy / open_price
+                    shares += entry_shares
+                    cash -= deploy
+                    entry_date = date
+                    entry_price = open_price
+                    entry_value = exec_total
+                    entry_cash = deploy
+                    entry_signal = signal
+                    peak_portfolio = max(peak_portfolio, exec_total)
+            elif action_type == "sell":
+                _, signal_date_str = pending_action
+                proceeds = shares * open_price
+                cash += proceeds
+                exit_total = cash
+                if entry_date is not None:
+                    pnl = exit_total - entry_value
+                    trades_list.append({
+                        "entry": entry_date.strftime("%Y-%m-%d"),
+                        "exit": date.strftime("%Y-%m-%d"),
+                        "entry_price": round(entry_price, 2),
+                        "exit_price": round(open_price, 2),
+                        "days": (date - entry_date).days,
+                        "ret": round((pnl / entry_value) * 100, 2),
+                        "pnl": round(pnl, 0),
+                        "win": pnl > 0,
+                        "signal": entry_signal,
+                        "shares": round(entry_shares, 2),
+                        "deployed": round(entry_cash, 0),
+                        "before": round(entry_value, 0),
+                        "after": round(exit_total, 0),
+                        "cash_after": round(cash, 0),
+                        "year": date.year,
+                    })
+                shares = 0.0
+                entry_date = None
+                peak_portfolio = cash
+            elif action_type == "adjust":
+                _, target_alloc = pending_action
+                exec_total = cash + shares * open_price
+                target_val = exec_total * target_alloc
+                current_val = shares * open_price
+                if target_val > current_val and cash > 0:
+                    add = min(target_val - current_val, cash)
+                    shares += add / open_price
+                    cash -= add
+                elif target_val < current_val:
+                    excess = current_val - target_val
+                    sell_sh = excess / open_price
+                    cash += sell_sh * open_price
+                    shares -= sell_sh
+            pending_action = None
+
+        # ── Evaluate signals at today's CLOSE ──
+        total = cash + shares * close_price
 
         qq_idx = qqq.index.get_indexer([date], method="nearest")[0]
         nq_idx = nasdaq.index.get_indexer([date], method="nearest")[0]
@@ -179,18 +244,15 @@ def _run_continuous(start_year: int, end_year: int):
         above_200 = qq_close > sma200
         pct_above = ((qq_close - sma200) / sma200) * 100
 
-        # Weekly MACD
         w_dates = qqq_w.index[qqq_w.index <= date]
         macd_pos = len(w_dates) >= 1 and float(qqq_w.loc[w_dates[-1], "MACD"]) > 0
 
-        # Crash detector
         ti = tqqq.index.get_indexer([date], method="nearest")[0]
         crash = False
         if ti >= 10:
             rh = float(tqqq.iloc[ti - 10: ti + 1]["High"].max())
-            crash = ((price - rh) / rh * 100) <= -30
+            crash = ((close_price - rh) / rh * 100) <= -30
 
-        # FTD
         is_ftd = _find_ftd_signal(nasdaq, nq_idx)
         ftd_blocked = ftd_cooldown_until is not None and date < ftd_cooldown_until
 
@@ -198,7 +260,7 @@ def _run_continuous(start_year: int, end_year: int):
             cooldown_until = date + pd.Timedelta(days=40)
             ftd_cooldown_until = date + pd.Timedelta(days=40)
 
-        # Target allocation
+        # Determine target allocation based on today's close
         target = 0.0
 
         if cooldown_until and date < cooldown_until and shares == 0:
@@ -227,11 +289,9 @@ def _run_continuous(start_year: int, end_year: int):
             else:
                 target = 1.0 if macd_pos else 0.5
         else:
-            # In position — check exits
             if total > peak_portfolio:
                 peak_portfolio = total
 
-            # Trailing stop
             if pct_above >= 3.0:
                 pdd = ((total - peak_portfolio) / peak_portfolio) * 100
                 if pdd <= -12.0:
@@ -240,7 +300,6 @@ def _run_continuous(start_year: int, end_year: int):
                     cooldown_until = date + pd.Timedelta(days=10)
                     ftd_cooldown_until = date + pd.Timedelta(days=15)
 
-            # 200-day exit
             if not above_200:
                 target = 0.0
                 exited = True
@@ -250,63 +309,18 @@ def _run_continuous(start_year: int, end_year: int):
             if target != 0.0 or (target == 0.0 and not exited):
                 target = 1.0 if (macd_pos and above_200) else 0.5
 
-        # Execute
-        current_alloc = (shares * price) / total if total > 0 else 0
+        # ── Queue action for TOMORROW's open ──
+        current_alloc = (shares * close_price) / total if total > 0 else 0
 
         if target >= 0.1 and current_alloc < 0.1:
-            deploy = min(total * target, cash)
-            if deploy > 0:
-                entry_shares = deploy / price
-                shares += entry_shares
-                cash -= deploy
-                entry_date = date
-                entry_price = price
-                entry_value = total
-                entry_cash = deploy
-                entry_signal = "FTD" if is_ftd else ("MACD" if macd_pos else "Entry")
-                peak_portfolio = max(peak_portfolio, total)
-
+            signal = "FTD" if is_ftd else ("MACD" if macd_pos else "Entry")
+            pending_action = ("buy", target, signal)
         elif target < 0.1 and current_alloc > 0.1:
-            proceeds = shares * price
-            cash += proceeds
-            exit_total = cash
-            if entry_date is not None:
-                pnl = exit_total - entry_value
-                trades_list.append({
-                    "entry": entry_date.strftime("%Y-%m-%d"),
-                    "exit": date.strftime("%Y-%m-%d"),
-                    "entry_price": round(entry_price, 2),
-                    "exit_price": round(price, 2),
-                    "days": (date - entry_date).days,
-                    "ret": round((pnl / entry_value) * 100, 2),
-                    "pnl": round(pnl, 0),
-                    "win": pnl > 0,
-                    "signal": entry_signal,
-                    "shares": round(entry_shares, 2),
-                    "deployed": round(entry_cash, 0),
-                    "before": round(entry_value, 0),
-                    "after": round(exit_total, 0),
-                    "cash_after": round(cash, 0),
-                    "year": date.year,
-                })
-            shares = 0.0
-            entry_date = None
-            peak_portfolio = cash
-
+            pending_action = ("sell", date.strftime("%Y-%m-%d"))
         elif shares > 0 and abs(target - current_alloc) > 0.15:
-            target_val = total * target
-            current_val = shares * price
-            if target_val > current_val and cash > 0:
-                add = min(target_val - current_val, cash)
-                shares += add / price
-                cash -= add
-            elif target_val < current_val:
-                excess = current_val - target_val
-                sell_sh = excess / price
-                cash += sell_sh * price
-                shares -= sell_sh
+            pending_action = ("adjust", target)
 
-        equity[date] = cash + shares * price
+        equity[date] = cash + shares * close_price
 
     # Close open position
     if shares > 0:
