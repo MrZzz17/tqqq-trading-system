@@ -13,6 +13,12 @@ import os
 import logging
 from typing import Optional
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import numpy as np
 import pandas as pd
 import streamlit as st
