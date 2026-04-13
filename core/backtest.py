@@ -1,13 +1,13 @@
 """
-Historical backtest of the TQQQ swing trading system.
+TQQQ Swing Trading System — V3 Backtest Engine
 
-Uses dollar-based portfolio accounting: tracks actual cash, shares held,
-and position value at every step.  Runs a CONTINUOUS multi-year simulation
-starting at $100,000 and slices the equity curve into annual returns.
-
-Every trade logs a full portfolio snapshot so the dashboard can show exactly
-how much cash was deployed, how many shares were bought/sold, and the
-portfolio value before and after each action.
+Key changes from V2:
+- Regime-aware exits: wide (50-day) in golden cross, tight (21-EMA) otherwise
+- QQQ-only for all signals — no SPY gating, no TQQQ regime checks
+- 75% allocation in confirmed bull (golden cross), 50% otherwise
+- No adaptive scaling (it created hidden P&L distortions)
+- QQQ below 200-day = immediate exit and no entries
+- Start from 2011 for full TQQQ history
 """
 
 import datetime as dt
@@ -88,45 +88,47 @@ def _indicators(df: pd.DataFrame) -> pd.DataFrame:
 MIN_CORRECTION_PCT = 7.0
 FTD_RALLY_DAY_MIN = 4
 FTD_GAIN_MIN = 1.25
-MIN_HOLD_DAYS = 15
+MIN_HOLD_DAYS = 10
 PULLBACK_ENTRY_PCT = 8.0
-COOLDOWN_BULL = 3
-COOLDOWN_BEAR = 7
+PULLBACK_BULL_QQQ_PCT = 4.0
+PULLBACK_BEAR_QQQ_PCT = 5.0
+COOLDOWN_WIN = 3
+COOLDOWN_LOSS = 10
 MAX_CONSECUTIVE_LOSSES = 2
+ALLOC_BULL = 0.50
+ALLOC_CAUTIOUS = 0.25
 
 
-# ── Buy Signal Detection ─────────────────────────────────────────
+# ── QQQ Market Regime ─────────────────────────────────────────────
 
-def _is_bull_regime(tqqq: pd.DataFrame, idx: int) -> bool:
-    sma200 = tqqq.iloc[idx].get("SMA_200")
-    if sma200 is None or pd.isna(sma200):
-        return True
-    close = float(tqqq.iloc[idx]["Close"])
-    if close < float(sma200):
-        return False
-    if idx >= 20:
-        sma200_prev = tqqq.iloc[idx - 20].get("SMA_200")
-        if sma200_prev and not pd.isna(sma200_prev):
-            return float(sma200) >= float(sma200_prev)
-    return True
-
-
-def _qqq_below_200(qqq: pd.DataFrame, idx: int) -> bool:
-    """True when QQQ is trading below its 200-day SMA."""
+def _qqq_regime(qqq: pd.DataFrame, idx: int) -> str:
+    """
+    Returns the current QQQ market regime:
+    - 'strong_bull': golden cross + above 200d + above 50d
+    - 'bull': above 200d (no golden cross yet, or below 50d)
+    - 'bear': below 200d
+    """
     sma200 = qqq.iloc[idx].get("SMA_200")
+    sma50 = qqq.iloc[idx].get("SMA_50")
     if sma200 is None or pd.isna(sma200):
-        return False
-    return float(qqq.iloc[idx]["Close"]) < float(sma200)
+        return "bull"
+    close = float(qqq.iloc[idx]["Close"])
+    if close < float(sma200):
+        return "bear"
+    if sma50 is not None and not pd.isna(sma50) and float(sma50) > float(sma200):
+        return "strong_bull"
+    return "bull"
 
 
 def _qqq_death_cross(qqq: pd.DataFrame, idx: int) -> bool:
-    """True when QQQ's 50-day SMA is below its 200-day SMA (death cross)."""
     sma50 = qqq.iloc[idx].get("SMA_50")
     sma200 = qqq.iloc[idx].get("SMA_200")
     if sma50 is None or pd.isna(sma50) or sma200 is None or pd.isna(sma200):
         return False
     return float(sma50) < float(sma200)
 
+
+# ── Buy Signal Detection ─────────────────────────────────────────
 
 def _find_ftd_signal(nasdaq: pd.DataFrame, idx: int) -> bool:
     if idx < 50:
@@ -192,31 +194,18 @@ def _find_3wk_signal(qqq: pd.DataFrame, tqqq: pd.DataFrame, idx: int) -> bool:
     return False
 
 
-PULLBACK_BULL_QQQ_PCT = 4.0
-PULLBACK_BEAR_QQQ_PCT = 5.0
-
-
-def _find_pullback_entry(qqq: pd.DataFrame, qq_idx: int) -> bool:
-    """
-    Detect pullback on QQQ (not TQQQ) since QQQ's price action is clean
-    and not distorted by 3x leverage. In a confirmed bull, a 3% QQQ dip
-    is meaningful (~9% TQQQ). In uncertain markets, require 5% (~15% TQQQ).
-    """
+def _find_pullback_entry(qqq: pd.DataFrame, qq_idx: int, regime: str) -> bool:
     if qq_idx < 50:
         return False
-
     close = float(qqq.iloc[qq_idx]["Close"])
     prev_close = float(qqq.iloc[qq_idx - 1]["Close"])
-
     if close <= prev_close:
         return False
     if qq_idx >= 3:
         if float(qqq.iloc[qq_idx]["Low"]) <= float(qqq.iloc[qq_idx - 2]["Low"]):
             return False
 
-    confirmed_bull = _is_confirmed_bull(qqq, qq_idx)
-
-    if confirmed_bull:
+    if regime == "strong_bull":
         lookback = min(20, qq_idx)
         recent_high = float(qqq.iloc[qq_idx - lookback: qq_idx + 1]["High"].max())
         recent_low = float(qqq.iloc[max(0, qq_idx - 3): qq_idx + 1]["Low"].min())
@@ -241,10 +230,6 @@ def _find_pullback_entry(qqq: pd.DataFrame, qq_idx: int) -> bool:
 
 
 def _find_ma_retake_entry(qqq: pd.DataFrame, qq_idx: int) -> bool:
-    """
-    Detect QQQ retaking its 21-EMA after dipping below it.
-    The 50-day SMA must be rising (uptrend intact).
-    """
     if qq_idx < 50:
         return False
     ema21 = qqq.iloc[qq_idx].get("EMA_21")
@@ -257,126 +242,67 @@ def _find_ma_retake_entry(qqq: pd.DataFrame, qq_idx: int) -> bool:
     if not crossed_above:
         return False
     sma50 = qqq.iloc[qq_idx].get("SMA_50")
-    if sma50 and not pd.isna(sma50):
-        if qq_idx >= 10:
-            sma50_prev = qqq.iloc[qq_idx - 10].get("SMA_50")
-            if sma50_prev and not pd.isna(sma50_prev):
-                if float(sma50) < float(sma50_prev):
-                    return False
+    if sma50 and not pd.isna(sma50) and qq_idx >= 10:
+        sma50_prev = qqq.iloc[qq_idx - 10].get("SMA_50")
+        if sma50_prev and not pd.isna(sma50_prev):
+            if float(sma50) < float(sma50_prev):
+                return False
     lookback = min(20, qq_idx)
     recent_high = float(qqq.iloc[qq_idx - lookback: qq_idx + 1]["High"].max())
     dip_pct = ((close - recent_high) / recent_high) * 100
     return dip_pct <= -2.0
 
 
-def _is_confirmed_bull(qqq: pd.DataFrame, idx: int) -> bool:
-    """Confirmed bull = QQQ above 200-day AND golden cross (50d > 200d)."""
-    sma200 = qqq.iloc[idx].get("SMA_200")
-    sma50 = qqq.iloc[idx].get("SMA_50")
-    if sma200 is None or pd.isna(sma200) or sma50 is None or pd.isna(sma50):
-        return False
-    close = float(qqq.iloc[idx]["Close"])
-    return close > float(sma200) and float(sma50) > float(sma200)
+# ── Regime-Aware Exit Logic ───────────────────────────────────────
 
+def _check_exit(qqq: pd.DataFrame, qq_idx: int, regime: str,
+                entry_price: float, entry_idx: int, current_idx: int) -> str:
+    """
+    Regime-aware exit:
+    - strong_bull: use WIDE exit (2 closes below 50-day SMA)
+    - bull: use TIGHT exit (2 closes below 21-EMA)
+    - bear: immediate exit
+    """
+    if qq_idx < 2:
+        return "hold"
 
+    close = float(qqq.iloc[qq_idx]["Close"])
+    prev_close = float(qqq.iloc[qq_idx - 1]["Close"])
+    held_days = current_idx - entry_idx
 
-# ── Sell Signal Detection ─────────────────────────────────────────
-
-def _check_nuclear_exit(tqqq: pd.DataFrame, idx: int) -> bool:
-    if idx < 2:
-        return False
-    row = tqqq.iloc[idx]
-    prev = tqqq.iloc[idx - 1]
-    ema21 = row.get("EMA_21")
-    prev_ema21 = prev.get("EMA_21")
-    if ema21 and not pd.isna(ema21) and prev_ema21 and not pd.isna(prev_ema21):
-        return (float(row["Close"]) < float(ema21) and
-                float(prev["Close"]) < float(prev_ema21))
-    return False
-
-
-def _count_distribution_days(nasdaq: pd.DataFrame, idx: int) -> int:
-    if idx < 25:
-        return 0
-    window = nasdaq.iloc[idx - 24: idx + 1]
-    current_close = float(nasdaq.iloc[idx]["Close"])
-    count = 0
-    for i in range(1, len(window)):
-        pct = (float(window.iloc[i]["Close"]) / float(window.iloc[i - 1]["Close"]) - 1) * 100
-        vol_up = float(window.iloc[i]["Volume"]) > float(window.iloc[i - 1]["Volume"])
-        if pct <= -0.2 and vol_up:
-            close_on_dd = float(window.iloc[i]["Close"])
-            rally_since = ((current_close - close_on_dd) / close_on_dd) * 100
-            if rally_since < 5.0:
-                count += 1
-    return count
-
-
-def _check_severe_weakness(tqqq: pd.DataFrame, idx: int) -> bool:
-    if idx < 3:
-        return False
-    return (
-        all(float(tqqq.iloc[idx - 2 + j]["Close"]) < float(tqqq.iloc[idx - 3 + j]["Close"]) for j in range(3))
-        and all(float(tqqq.iloc[idx - 2 + j]["Volume"]) > float(tqqq.iloc[idx - 3 + j]["Volume"]) for j in range(3))
-        and all(
-            float(tqqq.iloc[idx - 2 + j]["High"]) < float(tqqq.iloc[idx - 3 + j]["High"])
-            and float(tqqq.iloc[idx - 2 + j]["Low"]) < float(tqqq.iloc[idx - 3 + j]["Low"])
-            for j in range(3)
-        )
-    )
-
-
-def _evaluate_exit(tqqq: pd.DataFrame, nasdaq: pd.DataFrame, idx: int,
-                   entry_price: float, entry_idx: int, rally_low: float) -> str:
-    held_days = idx - entry_idx
-    close = float(tqqq.iloc[idx]["Close"])
-
+    # Hard stop: catastrophic loss from entry
     if held_days <= 5:
-        if ((close - entry_price) / entry_price) * 100 < -20.0:
+        tqqq_return = ((float(qqq.iloc[qq_idx]["Close"]) - entry_price) / entry_price) * 100
+        if tqqq_return < -8.0:
             return "full_exit"
         return "hold"
 
-    if close < rally_low:
+    # Bear regime: immediate exit
+    if regime == "bear":
         return "full_exit"
 
-    if held_days < MIN_HOLD_DAYS:
-        if ((close - entry_price) / entry_price) * 100 < -18.0:
-            return "full_exit"
+    # Strong bull: wide exit (2 closes below 50-day SMA)
+    if regime == "strong_bull":
+        sma50 = qqq.iloc[qq_idx].get("SMA_50")
+        prev_sma50 = qqq.iloc[qq_idx - 1].get("SMA_50")
+        if (sma50 and not pd.isna(sma50) and prev_sma50 and not pd.isna(prev_sma50)):
+            if close < float(sma50) and prev_close < float(prev_sma50):
+                return "full_exit"
         return "hold"
 
-    if _check_nuclear_exit(tqqq, idx):
-        return "full_exit"
-
-    nq_idx_arr = nasdaq.index.get_indexer([tqqq.index[idx]], method="nearest")
-    nq_idx = nq_idx_arr[0] if len(nq_idx_arr) > 0 else idx
-    dist_days = _count_distribution_days(nasdaq, nq_idx)
-    severe = _check_severe_weakness(tqqq, idx)
-
-    if dist_days >= 5 and severe:
-        return "full_exit"
-    if dist_days >= 5 or severe:
-        return "trim_heavy"
-    if dist_days >= 4:
-        sma10 = tqqq.iloc[idx].get("SMA_10")
-        vol_avg = tqqq.iloc[idx].get("Vol_SMA_50")
-        if (sma10 and not pd.isna(sma10) and vol_avg and not pd.isna(vol_avg)
-                and close < float(sma10)
-                and float(tqqq.iloc[idx]["Volume"]) > float(vol_avg) * 1.1):
-            return "trim_heavy"
-        return "trim_light"
+    # Bull (not golden cross): tight exit (2 closes below 21-EMA)
+    ema21 = qqq.iloc[qq_idx].get("EMA_21")
+    prev_ema21 = qqq.iloc[qq_idx - 1].get("EMA_21")
+    if (ema21 and not pd.isna(ema21) and prev_ema21 and not pd.isna(prev_ema21)):
+        if close < float(ema21) and prev_close < float(prev_ema21):
+            return "full_exit"
 
     return "hold"
 
 
 # ── Dollar-Based Portfolio ────────────────────────────────────────
 
-SCALE_UP_DAYS = 3
-TRAILING_TRIM_PCT = 8.0
-
-
 class Portfolio:
-    """Tracks actual cash and shares -- no abstract percentages."""
-
     def __init__(self, starting_cash: float = STARTING_CAPITAL):
         self.cash = starting_cash
         self.shares = 0.0
@@ -388,9 +314,6 @@ class Portfolio:
         self.entry_shares = 0.0
         self.entry_cash_deployed = 0.0
         self.entry_portfolio_value = 0.0
-        self.profitable_days = 0
-        self.peak_price = 0.0
-        self.scaled_to = 0.0
 
     @property
     def in_position(self) -> bool:
@@ -401,7 +324,6 @@ class Portfolio:
 
     def buy(self, price: float, allocation: float, date: str,
             signal: str, idx: int, rally_low: float):
-        """Buy TQQQ with `allocation` fraction (0-1) of total portfolio."""
         total = self.total_value(price)
         cash_to_deploy = total * allocation
         cash_to_deploy = min(cash_to_deploy, self.cash)
@@ -417,24 +339,6 @@ class Portfolio:
         self.rally_low = rally_low
         self.entry_shares = self.shares
         self.entry_cash_deployed = cash_to_deploy
-        self.profitable_days = 0
-        self.peak_price = price
-        self.scaled_to = allocation
-
-    def scale_up(self, price: float, target_alloc: float):
-        """Scale position up by deploying more cash."""
-        total = self.total_value(price)
-        current_alloc = (self.shares * price) / total if total > 0 else 0
-        if current_alloc >= target_alloc - 0.01:
-            return
-        additional = total * target_alloc - self.shares * price
-        additional = min(additional, self.cash)
-        if additional <= 0:
-            return
-        new_shares = additional / price
-        self.shares += new_shares
-        self.cash -= additional
-        self.scaled_to = target_alloc
 
     def sell_all(self, price: float) -> float:
         proceeds = self.shares * price
@@ -442,31 +346,11 @@ class Portfolio:
         self.shares = 0.0
         return proceeds
 
-    def trim(self, price: float, fraction: float) -> float:
-        shares_to_sell = self.shares * fraction
-        proceeds = shares_to_sell * price
-        self.cash += proceeds
-        self.shares -= shares_to_sell
-        return proceeds
-
-    def trim_to_allocation(self, price: float, target_alloc: float):
-        """Trim position down to target allocation."""
-        total = self.total_value(price)
-        target_value = total * target_alloc
-        current_value = self.shares * price
-        if current_value <= target_value:
-            return
-        excess_value = current_value - target_value
-        shares_to_sell = excess_value / price
-        self.cash += shares_to_sell * price
-        self.shares -= shares_to_sell
-        self.scaled_to = target_alloc
-
 
 # ── Continuous Multi-Year Backtest ────────────────────────────────
 
 def _run_continuous(start_year: int, end_year: int):
-    fetch_start = f"{start_year - 1}-01-01"
+    fetch_start = f"{start_year - 1}-06-01"
     end_dt = min(dt.date(end_year, 12, 31), dt.date.today())
     fetch_end = end_dt.strftime("%Y-%m-%d")
 
@@ -492,7 +376,6 @@ def _run_continuous(start_year: int, end_year: int):
     cooldown_until = 0
     consecutive_losses = 0
     last_trade_idx = 0
-    last_ftd_lost = False
 
     equity_by_date: Dict[pd.Timestamp, float] = {}
     trades_by_year: Dict[int, List[Trade]] = {}
@@ -518,12 +401,9 @@ def _run_continuous(start_year: int, end_year: int):
         )
 
     def _close_position(close_idx, date, price, current_year):
-        nonlocal consecutive_losses, cooldown_until, last_trade_idx, last_ftd_lost
-        held_days = close_idx - pf.entry_idx
+        nonlocal consecutive_losses, cooldown_until, last_trade_idx
         t = _make_trade(date, price)
-        t.duration_days = held_days
-        was_ftd = pf.signal_type == "FTD"
-        portfolio_before_exit = pf.total_value(price)
+        t.duration_days = close_idx - pf.entry_idx
         pf.sell_all(price)
         t.portfolio_after = round(pf.total_value(price), 2)
         t.cash_after = round(pf.cash, 2)
@@ -536,18 +416,10 @@ def _run_continuous(start_year: int, end_year: int):
 
         if is_loss:
             consecutive_losses += 1
+            cooldown_until = close_idx + COOLDOWN_LOSS
         else:
             consecutive_losses = 0
-
-        if was_ftd:
-            last_ftd_lost = is_loss
-
-        if is_loss:
-            cooldown_until = close_idx + 10
-        elif _is_bull_regime(tqqq_df, close_idx):
-            cooldown_until = close_idx + COOLDOWN_BULL
-        else:
-            cooldown_until = close_idx + COOLDOWN_BEAR
+            cooldown_until = close_idx + COOLDOWN_WIN
 
     for idx in sim_indices:
         date = all_idx[idx]
@@ -557,45 +429,43 @@ def _run_continuous(start_year: int, end_year: int):
         nq_idx = nasdaq_df.index.get_indexer([date], method="nearest")[0]
         qq_idx = qqq_df.index.get_indexer([date], method="nearest")[0]
 
+        regime = _qqq_regime(qqq_df, qq_idx)
+
         if not pf.in_position:
             if idx < cooldown_until:
                 equity_by_date[date] = pf.total_value(price)
                 continue
 
-            # Reset loss streak after 30+ trading days gap (market has proven itself)
             if consecutive_losses > 0 and (idx - last_trade_idx) > 30:
                 consecutive_losses = 0
 
-            death_cross = _qqq_death_cross(qqq_df, qq_idx)
-            below_200 = _qqq_below_200(qqq_df, qq_idx)
-            confirmed_bull = _is_confirmed_bull(qqq_df, qq_idx)
-            bull = _is_bull_regime(tqqq_df, idx)
+            # No entries in bear market
+            if regime == "bear":
+                equity_by_date[date] = pf.total_value(price)
+                continue
 
+            death_cross = _qqq_death_cross(qqq_df, qq_idx)
             is_ftd = _find_ftd_signal(nasdaq_df, nq_idx)
             is_3wk = _find_3wk_signal(qqq_df, tqqq_df, idx)
-            is_pullback = bull and _find_pullback_entry(qqq_df, qq_idx)
-            is_ma_retake = bull and _find_ma_retake_entry(qqq_df, qq_idx)
+            is_pullback = (regime != "bear") and _find_pullback_entry(qqq_df, qq_idx, regime)
+            is_ma_retake = (regime != "bear") and _find_ma_retake_entry(qqq_df, qq_idx)
 
-            # Enter at 50%. In confirmed bulls, adaptive scaling to 100%
-            # kicks in after 3 profitable days (handled in hold loop).
             alloc = 0.0
             signal = ""
 
             if is_ftd:
-                alloc, signal = 0.5, "FTD"
+                alloc, signal = ALLOC_BULL, "FTD"
                 consecutive_losses = 0
             elif is_3wk:
-                alloc = 0.25 if death_cross else 0.5
+                alloc = ALLOC_CAUTIOUS if death_cross else ALLOC_BULL
                 signal = "3WK"
             elif is_pullback:
-                alloc = 0.25 if death_cross else 0.5
-                signal = "Pullback"
+                alloc, signal = ALLOC_BULL, "Pullback"
             elif is_ma_retake:
-                alloc = 0.25 if death_cross else 0.5
-                signal = "MA Retake"
+                alloc, signal = ALLOC_BULL, "MA Retake"
 
             if alloc > 0 and signal != "FTD" and consecutive_losses >= MAX_CONSECUTIVE_LOSSES:
-                alloc = min(alloc, 0.25)
+                alloc = min(alloc, ALLOC_CAUTIOUS)
 
             if alloc > 0:
                 lookback = min(20, idx)
@@ -604,35 +474,14 @@ def _run_continuous(start_year: int, end_year: int):
                        signal, idx, r_low)
 
         else:
-            action = _evaluate_exit(tqqq_df, nasdaq_df, idx,
-                                    pf.entry_price, pf.entry_idx, pf.rally_low)
+            entry_qq_idx = qqq_df.index.get_indexer(
+                [tqqq_df.index[pf.entry_idx]], method="nearest")[0]
+            entry_qq_price = float(qqq_df.iloc[entry_qq_idx]["Close"])
+            exit_action = _check_exit(qqq_df, qq_idx, regime,
+                                      entry_qq_price, entry_qq_idx, qq_idx)
 
-            if action == "full_exit":
+            if exit_action == "full_exit":
                 _close_position(idx, date, price, current_year)
-
-            elif action in ("trim_heavy", "trim_light"):
-                trim_frac = 0.4 if action == "trim_heavy" else 0.2
-                pf.trim(price, trim_frac)
-                if pf.shares * price < pf.total_value(price) * 0.10:
-                    _close_position(idx, date, price, current_year)
-
-            else:
-                if price > pf.peak_price:
-                    pf.peak_price = price
-
-                held_days = idx - pf.entry_idx
-
-                # In confirmed bull: scale to 100% after 3 profitable days
-                if (confirmed_bull and held_days >= SCALE_UP_DAYS
-                        and price > pf.entry_price and pf.scaled_to < 1.0):
-                    pf.scale_up(price, 1.0)
-
-                # Trailing trim: if price drops 8% from peak, trim to 50%
-                if pf.peak_price > 0 and pf.scaled_to > 0.5:
-                    drawdown = ((price - pf.peak_price) / pf.peak_price) * 100
-                    if drawdown <= -TRAILING_TRIM_PCT:
-                        pf.trim_to_allocation(price, 0.5)
-                        pf.peak_price = price
 
         equity_by_date[date] = pf.total_value(price)
 
