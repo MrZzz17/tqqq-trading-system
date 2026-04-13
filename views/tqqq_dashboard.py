@@ -190,7 +190,7 @@ def render():
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
         c3.metric("Nasdaq", f"{nq_icon} {nq_short}",
                    delta=f"{nasdaq_regime.dist_day_count} dist days", delta_color="off")
-        c4.metric("S&P 500", f"{sp_icon} {sp_short}",
+        c4.metric("SPY", f"{sp_icon} {sp_short}",
                    delta=f"{sp_regime.dist_day_count} dist days", delta_color="off")
         st.caption(f"Data as of {data_date.strftime('%b %d, %Y')} · Yahoo Finance (delayed)")
 
@@ -425,7 +425,7 @@ def render():
         with hc1:
             _health_card("QQQ", qqq, len(qqq_dist))
         with hc2:
-            _health_card("S&P 500", sp500, len(sp_dist))
+            _health_card("SPY", sp500, len(sp_dist))
 
         # Position sizing guidance based on market health
         alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
@@ -533,7 +533,7 @@ def render():
         # Distribution Days
         st.markdown("### Distribution Days")
         dc1, dc2 = st.columns(2)
-        for col_widget, title, df_data in [(dc1, "Nasdaq Composite", nasdaq), (dc2, "S&P 500", sp500)]:
+        for col_widget, title, df_data in [(dc1, "Nasdaq Composite", nasdaq), (dc2, "SPY", sp500)]:
             with col_widget:
                 st.markdown(f"##### {title}")
                 dist = count_distribution_days(df_data)

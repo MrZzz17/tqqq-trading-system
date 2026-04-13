@@ -7,7 +7,7 @@ Thresholds derived from CAN SLIM methodology and rules-based swing trading.
 TQQQ = "TQQQ"
 QQQ = "QQQ"
 NASDAQ_COMPOSITE = "^IXIC"
-SP500 = "^GSPC"
+SP500 = "SPY"
 
 # --- Moving Average Periods ---
 MA_10 = 10
