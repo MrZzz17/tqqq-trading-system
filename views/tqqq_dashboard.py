@@ -316,6 +316,62 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
+        # Weekly MACD + Regime indicator
+        w_macd = qqq.iloc[-1].get("Weekly_MACD")
+        w_macd_sig = qqq.iloc[-1].get("Weekly_MACD_Signal")
+        macd_val = float(w_macd) if w_macd is not None and not pd.isna(w_macd) else None
+        macd_sig_val = float(w_macd_sig) if w_macd_sig is not None and not pd.isna(w_macd_sig) else None
+
+        qqq_sma200 = qqq.iloc[-1].get("SMA_200")
+        qqq_sma50 = qqq.iloc[-1].get("SMA_50")
+        qqq_close = float(qqq.iloc[-1]["Close"])
+
+        above_200 = (qqq_sma200 is not None and not pd.isna(qqq_sma200)
+                     and qqq_close > float(qqq_sma200))
+        golden = (qqq_sma50 is not None and not pd.isna(qqq_sma50)
+                  and qqq_sma200 is not None and not pd.isna(qqq_sma200)
+                  and float(qqq_sma50) > float(qqq_sma200))
+
+        if golden and above_200:
+            regime_str = "Strong Bull"
+            regime_color = "#17BF63"
+            exit_mode = "Wide exit (QQQ 50-day SMA)"
+            exit_desc = "Holding through normal pullbacks. Exit on 2 closes below QQQ 50-day."
+        elif above_200:
+            regime_str = "Bull"
+            regime_color = "#FFAD1F"
+            exit_mode = "Tight exit (QQQ 21-EMA)"
+            exit_desc = "Cautious hold. Exit on 2 closes below QQQ 21-day EMA."
+        else:
+            regime_str = "Bear"
+            regime_color = "#E0245E"
+            exit_mode = "No positions"
+            exit_desc = "QQQ below 200-day. Stay in cash."
+
+        macd_color = "#17BF63" if (macd_val and macd_val > 0) else "#E0245E"
+        macd_label = "Bullish" if (macd_val and macd_val > 0) else "Bearish"
+        macd_trend = "Rising" if (macd_val and macd_sig_val and macd_val > macd_sig_val) else "Falling"
+
+        st.markdown(f"""<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div style="border: 1px solid {regime_color}33; border-radius: 12px; padding: 14px;
+                background: {regime_color}08; text-align: center;">
+                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Market Regime</div>
+                <div style="font-size: 1.4em; font-weight: 800; color: {regime_color};">{regime_str}</div>
+                <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{exit_mode}</div>
+            </div>
+            <div style="border: 1px solid {macd_color}33; border-radius: 12px; padding: 14px;
+                background: {macd_color}08; text-align: center;">
+                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Weekly MACD</div>
+                <div style="font-size: 1.4em; font-weight: 800; color: {macd_color};">{macd_label}</div>
+                <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{macd_trend} · {macd_val:+.1f}</div>
+            </div>
+            <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 14px;
+                background: rgba(29,161,242,0.03); text-align: center;">
+                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Exit Strategy</div>
+                <div style="font-size: 0.85em; font-weight: 600; color: #E7E9EA; margin-top: 6px;">{exit_desc}</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
         hc1, hc2 = st.columns(2)
         qqq_dist = count_distribution_days(qqq)
         sp_dist = count_distribution_days(sp500)
@@ -325,33 +381,13 @@ def render():
             _health_card("S&P 500", sp500, len(sp_dist))
 
         # Position sizing guidance based on market health
-        qqq_sma200 = qqq.iloc[-1].get("SMA_200")
-        qqq_below_200 = (qqq_sma200 is not None and not pd.isna(qqq_sma200)
-                         and float(qqq.iloc[-1]["Close"]) < float(qqq_sma200))
-        qqq_sma50 = qqq.iloc[-1].get("SMA_50")
-        qqq_death_cross = (qqq_sma50 is not None and not pd.isna(qqq_sma50)
-                           and qqq_sma200 is not None and not pd.isna(qqq_sma200)
-                           and float(qqq_sma50) < float(qqq_sma200))
-
-        if qqq_death_cross:
-            sizing_color = "#E0245E"
-            sizing_msg = ("**Death Cross active** — QQQ 50-day is below 200-day. "
-                          "Only FTD entries recommended (at 50% allocation). "
-                          "Non-FTD entries capped at 25%.")
-        elif qqq_below_200:
-            sizing_color = "#FF6F00"
-            sizing_msg = ("**QQQ below 200-day** — Bear market conditions. "
-                          "FTD entries capped at 50%. Use caution with all entries.")
-        else:
-            sizing_color = "#17BF63"
-            sizing_msg = ("**QQQ above 200-day** — Bull market conditions. "
-                          "Full allocation on FTD signals. Normal sizing for all entries.")
-
         st.markdown(f"""<div style="
-            background: {sizing_color}08; border: 1px solid {sizing_color}22;
-            border-left: 4px solid {sizing_color}; border-radius: 10px;
+            background: {regime_color}08; border: 1px solid {regime_color}22;
+            border-left: 4px solid {regime_color}; border-radius: 10px;
             padding: 14px 18px; margin: 12px 0 20px 0; font-size: 0.9em; color: #E7E9EA;">
-            📐 <b>Position Sizing:</b> {sizing_msg}
+            📐 <b>Position Sizing ({regime_str}):</b> {exit_desc}
+            Allocation: <b>{'50%' if above_200 else '0% (cash)'}</b>
+            {'· Death cross: non-FTD entries capped at 25%' if not golden and above_200 else ''}
         </div>""", unsafe_allow_html=True)
 
         # Buy Signals
