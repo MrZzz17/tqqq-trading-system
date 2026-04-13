@@ -13,109 +13,164 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
     html, body, [class*="css"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     .stApp {
-        background: linear-gradient(180deg, #15202B 0%, #1a2836 50%, #15202B 100%);
+        background: #0a0f1a;
     }
 
-    /* Metric cards */
+    /* Metric cards — glass morphism */
     [data-testid="stMetric"] {
-        background: rgba(29, 161, 242, 0.06);
-        border: 1px solid rgba(29, 161, 242, 0.15);
-        border-radius: 12px;
-        padding: 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
     }
     [data-testid="stMetricLabel"] {
-        color: #8899A6 !important;
-        font-size: 0.85em !important;
+        color: #6b7280 !important;
+        font-size: 0.78em !important;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.08em;
+        font-weight: 500;
     }
     [data-testid="stMetricValue"] {
-        color: #E7E9EA !important;
-        font-weight: 700 !important;
+        color: #f0f0f0 !important;
+        font-weight: 800 !important;
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+    [data-testid="stMetricDelta"] {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 0.85em !important;
     }
 
-    /* Tab styling */
+    /* Tab styling — sleek */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0;
-        background: rgba(25, 39, 52, 0.8);
-        border-radius: 12px;
+        gap: 2px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 14px;
         padding: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        color: #8899A6;
+        border-radius: 10px;
+        color: #6b7280;
         font-weight: 600;
-        padding: 10px 20px;
+        font-size: 0.9em;
+        padding: 10px 24px;
+        transition: all 0.2s ease;
     }
     .stTabs [aria-selected="true"] {
-        background: rgba(29, 161, 242, 0.15) !important;
-        color: #1DA1F2 !important;
+        background: rgba(99, 102, 241, 0.12) !important;
+        color: #818cf8 !important;
     }
 
-    /* Buttons */
+    /* Buttons — gradient */
     .stButton > button {
-        background: linear-gradient(135deg, #1DA1F2, #0d8bd9);
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: 600;
-        transition: all 0.2s;
+        padding: 0.6em 1.5em;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
     }
     .stButton > button:hover {
-        background: linear-gradient(135deg, #0d8bd9, #0a6fad);
-        transform: translateY(-1px);
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
     }
 
-    /* Dataframes */
+    /* Dataframes — clean dark */
     [data-testid="stDataFrame"] {
-        border-radius: 12px;
+        border-radius: 14px;
         overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
-    /* Expanders */
+    /* Expanders — premium feel */
     .streamlit-expanderHeader {
-        background: rgba(29, 161, 242, 0.05);
-        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(255, 255, 255, 0.04) !important;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    .streamlit-expanderHeader:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+        border-color: rgba(99, 102, 241, 0.15) !important;
+    }
+    .streamlit-expanderContent {
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        background: rgba(255, 255, 255, 0.01);
     }
 
     /* Slider */
     .stSlider [data-baseweb="slider"] [role="slider"] {
-        background: #1DA1F2;
+        background: #6366f1;
     }
 
-    /* Hide deploy button and main menu */
+    /* Hide chrome */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
 
     /* Info/success/warning boxes */
     .stAlert {
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* Sidebar — dark glass */
+    [data-testid="stSidebar"] {
+        background: #0d1117;
+        border-right: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* Scrollbar — minimal */
+    ::-webkit-scrollbar {
+        width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
     }
 
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: #192734;
-        border-right: 1px solid rgba(29, 161, 242, 0.1);
+    /* Links */
+    a {
+        color: #818cf8 !important;
+        text-decoration: none !important;
+    }
+    a:hover {
+        color: #a5b4fc !important;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-        width: 6px;
+    /* Number styling */
+    .big-number {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 800;
+        letter-spacing: -0.03em;
     }
-    ::-webkit-scrollbar-track {
-        background: #15202B;
+
+    /* Dividers */
+    hr {
+        border-color: rgba(255, 255, 255, 0.04) !important;
     }
-    ::-webkit-scrollbar-thumb {
-        background: #38444D;
-        border-radius: 3px;
+
+    /* Column gaps */
+    [data-testid="column"] {
+        padding: 0 8px;
     }
 </style>
 """, unsafe_allow_html=True)

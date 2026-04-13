@@ -41,22 +41,22 @@ def _styled_card(title: str, content: str, border_color: str = "#38444D") -> str
 
 def render():
     st.markdown(f"""
-        <div style="text-align: center; padding: 20px 0 10px 0;">
+        <div style="text-align: center; padding: 30px 0 16px 0;">
             <a href="{TWITTER_URL}" target="_blank" style="text-decoration: none;">
                 <img src="{LOGO_URL}" alt="MrZzz"
-                     style="width: 64px; height: 64px; border-radius: 50%;
-                            border: 2px solid #1DA1F2; margin-bottom: 10px;
-                            box-shadow: 0 0 20px rgba(29,161,242,0.3);">
+                     style="width: 56px; height: 56px; border-radius: 50%;
+                            border: 2px solid rgba(99,102,241,0.5); margin-bottom: 12px;
+                            box-shadow: 0 0 30px rgba(99,102,241,0.15);">
             </a>
-            <h1 style="margin-bottom: 0; font-size: 2.2em; color: #E7E9EA;
-                        letter-spacing: -0.02em;">
+            <h1 style="margin-bottom: 0; font-size: 2em; color: #f0f0f0;
+                        letter-spacing: -0.03em; font-weight: 800;">
                 TQQQ Trading System
             </h1>
-            <p style="color: #8899A6; font-size: 1.0em; margin-top: 6px;">
+            <p style="color: #6b7280; font-size: 0.92em; margin-top: 6px; font-weight: 400;">
                 Rules-based swing trading &nbsp;&#183;&nbsp; 3x leveraged Nasdaq 100
                 &nbsp;&#183;&nbsp;
                 <a href="{TWITTER_URL}" target="_blank"
-                   style="color: #1DA1F2; text-decoration: none; font-weight: 600;">
+                   style="color: #818cf8; text-decoration: none; font-weight: 600;">
                     by @MrZzz</a>
             </p>
         </div>
@@ -79,12 +79,13 @@ def render():
     # ── Sidebar ──
     with st.sidebar:
         st.markdown(f"""
-            <div style="text-align: center; padding: 10px 0 16px 0;">
-                <img src="{LOGO_URL}" style="width: 48px; height: 48px; border-radius: 50%;
-                     border: 2px solid #1DA1F2;">
-                <p style="color: #E7E9EA; font-weight: 700; margin: 8px 0 2px 0; font-size: 0.95em;">
-                    TQQQ System</p>
-                <p style="color: #657786; font-size: 0.75em; margin: 0;">by @MrZzz</p>
+            <div style="text-align: center; padding: 16px 0 20px 0;">
+                <img src="{LOGO_URL}" style="width: 44px; height: 44px; border-radius: 50%;
+                     border: 2px solid rgba(99,102,241,0.4);
+                     box-shadow: 0 0 20px rgba(99,102,241,0.1);">
+                <p style="color: #f0f0f0; font-weight: 700; margin: 10px 0 2px 0; font-size: 0.9em;
+                    letter-spacing: -0.01em;">TQQQ System</p>
+                <p style="color: #6b7280; font-size: 0.72em; margin: 0;">by @MrZzz</p>
             </div>
         """, unsafe_allow_html=True)
         st.markdown("---")
@@ -138,34 +139,42 @@ def render():
             py_pct = prior_year_result.total_return_pct if prior_year_result else 0
             py_color = "#17BF63" if py_pct >= 0 else "#E0245E"
 
-            st.markdown(f"""<div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 16px;
-                padding: 20px; background: linear-gradient(135deg, rgba(29,161,242,0.06), rgba(23,191,99,0.04));
-                margin-bottom: 16px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: center;">
+            py_color = "#34d399" if py_pct >= 0 else "#f87171"
+            ytd_color = "#34d399" if ytd_pct >= 0 else "#f87171"
+
+            st.markdown(f"""<div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
+                padding: 28px 24px; background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.03));
+                margin-bottom: 20px; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: -40px; right: -40px; width: 200px; height: 200px;
+                    background: radial-gradient(circle, rgba(99,102,241,0.08), transparent 70%);
+                    border-radius: 50%;"></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: center;
+                    position: relative;">
                     <div style="text-align: center;">
-                        <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
-                            letter-spacing: 0.1em;">Backtested {start_year_bt}–{current_year}</div>
-                        <div style="font-size: 2.8em; font-weight: 900; color: #17BF63;
-                            letter-spacing: -0.03em; line-height: 1.1;">${lifetime_end:,.0f}</div>
-                        <div style="font-size: 0.85em; color: #8899A6; margin-top: 4px;">
-                            {lifetime_mult:,.0f}x from $100K</div>
+                        <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                            letter-spacing: 0.12em; font-weight: 500;">Backtested {start_year_bt}–{current_year}</div>
+                        <div style="font-size: 2.8em; font-weight: 900; color: #34d399;
+                            letter-spacing: -0.04em; line-height: 1.1;
+                            font-family: 'JetBrains Mono', monospace;">${lifetime_end:,.0f}</div>
+                        <div style="font-size: 0.82em; color: #9ca3af; margin-top: 6px;">
+                            <span style="color: #818cf8; font-weight: 700;">{lifetime_mult:,.0f}x</span> from $100K</div>
                     </div>
-                    <div style="text-align: center; border-left: 1px solid #38444D; border-right: 1px solid #38444D;
-                        padding: 0 16px;">
-                        <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
-                            letter-spacing: 0.1em;">{current_year - 1} Return</div>
+                    <div style="text-align: center; border-left: 1px solid rgba(255,255,255,0.06);
+                        border-right: 1px solid rgba(255,255,255,0.06); padding: 0 16px;">
+                        <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                            letter-spacing: 0.12em; font-weight: 500;">{current_year - 1} Return</div>
                         <div style="font-size: 2.2em; font-weight: 800; color: {py_color};
-                            line-height: 1.2;">{py_pct:+.1f}%</div>
-                        <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
-                            vs TQQQ B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
+                            line-height: 1.2; font-family: 'JetBrains Mono', monospace;">{py_pct:+.1f}%</div>
+                        <div style="font-size: 0.75em; color: #6b7280; margin-top: 6px;">
+                            vs B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
-                            letter-spacing: 0.1em;">{current_year} YTD</div>
+                        <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                            letter-spacing: 0.12em; font-weight: 500;">{current_year} YTD</div>
                         <div style="font-size: 2.2em; font-weight: 800; color: {ytd_color};
-                            line-height: 1.2;">{ytd_pct:+.1f}%</div>
-                        <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
-                            vs TQQQ B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
+                            line-height: 1.2; font-family: 'JetBrains Mono', monospace;">{ytd_pct:+.1f}%</div>
+                        <div style="font-size: 0.75em; color: #6b7280; margin-top: 6px;">
+                            vs B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
                     </div>
                 </div>
             </div>""", unsafe_allow_html=True)
@@ -925,18 +934,19 @@ confirmed, trending uptrends.""")
 
     # Footer
     st.markdown(f"""
-        <div style="border-top: 1px solid #38444D; margin-top: 40px; padding: 24px 0;
+        <div style="border-top: 1px solid rgba(255,255,255,0.04); margin-top: 48px; padding: 28px 0;
                      text-align: center;">
             <a href="{TWITTER_URL}" target="_blank" style="text-decoration: none;">
                 <img src="{LOGO_URL}" alt="MrZzz"
-                     style="width: 32px; height: 32px; border-radius: 50%;
-                            border: 1px solid #38444D; vertical-align: middle;">
-                <span style="color: #1DA1F2; font-weight: 600; margin-left: 8px;
-                              vertical-align: middle; font-size: 0.9em;">
+                     style="width: 28px; height: 28px; border-radius: 50%;
+                            border: 1px solid rgba(255,255,255,0.1); vertical-align: middle;
+                            opacity: 0.8;">
+                <span style="color: #818cf8; font-weight: 600; margin-left: 8px;
+                              vertical-align: middle; font-size: 0.85em;">
                     @MrZzz</span>
             </a>
-            <p style="color: #657786; font-size: 0.78em; margin-top: 10px;">
-                Data: Yahoo Finance (delayed) &nbsp;&#183;&nbsp;
+            <p style="color: #4b5563; font-size: 0.72em; margin-top: 10px; letter-spacing: 0.02em;">
+                Data: Yahoo Finance &nbsp;&#183;&nbsp;
                 Not financial advice &nbsp;&#183;&nbsp;
                 For educational purposes only
             </p>
