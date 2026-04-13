@@ -163,6 +163,127 @@ def render():
             </div>
         </div>""", unsafe_allow_html=True)
 
+        # ── Market Health Panel ──
+        st.markdown("### Market Health")
+
+        def _ma_status(df, col, label):
+            val = df.iloc[-1].get(col)
+            if val is None or pd.isna(val):
+                return label, "N/A", "N/A", "#657786"
+            v = float(val)
+            price = float(df.iloc[-1]["Close"])
+            dist = ((price - v) / v) * 100
+            above = price > v
+            return label, f"${v:.2f}", f"{dist:+.1f}%", "#17BF63" if above else "#E0245E"
+
+        def _cross_status(df):
+            sma50 = df.iloc[-1].get("SMA_50")
+            sma200 = df.iloc[-1].get("SMA_200")
+            if sma50 is None or pd.isna(sma50) or sma200 is None or pd.isna(sma200):
+                return "Unknown", "#657786"
+            if float(sma50) > float(sma200):
+                return "Golden Cross", "#17BF63"
+            return "Death Cross", "#E0245E"
+
+        def _drawdown_from_peak(df, lookback=252):
+            lb = min(lookback, len(df))
+            peak = float(df["High"].iloc[-lb:].max())
+            current = float(df["Close"].iloc[-1])
+            dd = ((current - peak) / peak) * 100
+            return dd, peak
+
+        def _health_card(ticker, df, dist_days_count):
+            price = float(df.iloc[-1]["Close"])
+            cross_label, cross_color = _cross_status(df)
+            dd_pct, peak = _drawdown_from_peak(df)
+
+            _, sma50_val, sma50_dist, sma50_color = _ma_status(df, "SMA_50", "50d")
+            _, sma200_val, sma200_dist, sma200_color = _ma_status(df, "SMA_200", "200d")
+            _, ema21_val, ema21_dist, ema21_color = _ma_status(df, "EMA_21", "21d")
+
+            above_200 = float(df.iloc[-1].get("SMA_200", 0) or 0)
+            regime_color = "#17BF63" if price > above_200 and above_200 > 0 else "#E0245E"
+            regime_label = "BULL" if price > above_200 and above_200 > 0 else "BEAR"
+
+            dd_color = "#17BF63" if dd_pct > -5 else ("#FFAD1F" if dd_pct > -10 else "#E0245E")
+
+            st.markdown(f"""<div style="border: 1px solid rgba(29,161,242,0.15); border-radius: 12px;
+                padding: 18px; background: rgba(29,161,242,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <div>
+                        <span style="font-size: 1.2em; font-weight: 800; color: #E7E9EA;">{ticker}</span>
+                        <span style="font-size: 1.2em; font-weight: 700; color: #E7E9EA; margin-left: 10px;">${price:.2f}</span>
+                    </div>
+                    <div>
+                        <span style="background: {regime_color}; color: white; padding: 3px 12px;
+                            border-radius: 20px; font-size: 0.78em; font-weight: 700;">{regime_label}</span>
+                        <span style="background: {cross_color}22; color: {cross_color}; padding: 3px 12px;
+                            border-radius: 20px; font-size: 0.78em; font-weight: 600; margin-left: 6px;
+                            border: 1px solid {cross_color}44;">{cross_label}</span>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.82em;">
+                    <div style="text-align: center;">
+                        <div style="color: #657786; margin-bottom: 2px;">21-EMA</div>
+                        <div style="color: {ema21_color}; font-weight: 600;">{ema21_dist}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #657786; margin-bottom: 2px;">50-day</div>
+                        <div style="color: {sma50_color}; font-weight: 600;">{sma50_dist}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #657786; margin-bottom: 2px;">200-day</div>
+                        <div style="color: {sma200_color}; font-weight: 600;">{sma200_dist}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #657786; margin-bottom: 2px;">From Peak</div>
+                        <div style="color: {dd_color}; font-weight: 600;">{dd_pct:+.1f}%</div>
+                    </div>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.78em; color: #8899A6;">
+                    Dist. days: <b style="color: {'#E0245E' if dist_days_count >= 4 else '#FFAD1F' if dist_days_count >= 3 else '#17BF63'}">{dist_days_count}</b>/25 sessions
+                    &nbsp;·&nbsp; 52w high: ${peak:.2f}
+                </div>
+            </div>""", unsafe_allow_html=True)
+
+        hc1, hc2 = st.columns(2)
+        qqq_dist = count_distribution_days(qqq)
+        sp_dist = count_distribution_days(sp500)
+        with hc1:
+            _health_card("QQQ", qqq, len(qqq_dist))
+        with hc2:
+            _health_card("S&P 500", sp500, len(sp_dist))
+
+        # Position sizing guidance based on market health
+        qqq_sma200 = qqq.iloc[-1].get("SMA_200")
+        qqq_below_200 = (qqq_sma200 is not None and not pd.isna(qqq_sma200)
+                         and float(qqq.iloc[-1]["Close"]) < float(qqq_sma200))
+        qqq_sma50 = qqq.iloc[-1].get("SMA_50")
+        qqq_death_cross = (qqq_sma50 is not None and not pd.isna(qqq_sma50)
+                           and qqq_sma200 is not None and not pd.isna(qqq_sma200)
+                           and float(qqq_sma50) < float(qqq_sma200))
+
+        if qqq_death_cross:
+            sizing_color = "#E0245E"
+            sizing_msg = ("**Death Cross active** — QQQ 50-day is below 200-day. "
+                          "Only FTD entries recommended (at 50% allocation). "
+                          "Non-FTD entries capped at 25%.")
+        elif qqq_below_200:
+            sizing_color = "#FF6F00"
+            sizing_msg = ("**QQQ below 200-day** — Bear market conditions. "
+                          "FTD entries capped at 50%. Use caution with all entries.")
+        else:
+            sizing_color = "#17BF63"
+            sizing_msg = ("**QQQ above 200-day** — Bull market conditions. "
+                          "Full allocation on FTD signals. Normal sizing for all entries.")
+
+        st.markdown(f"""<div style="
+            background: {sizing_color}08; border: 1px solid {sizing_color}22;
+            border-left: 4px solid {sizing_color}; border-radius: 10px;
+            padding: 14px 18px; margin: 12px 0 20px 0; font-size: 0.9em; color: #E7E9EA;">
+            📐 <b>Position Sizing:</b> {sizing_msg}
+        </div>""", unsafe_allow_html=True)
+
         # Buy Signals
         st.markdown("### Buy Signals")
         bc1, bc2 = st.columns(2)
