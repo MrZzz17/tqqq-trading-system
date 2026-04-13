@@ -123,6 +123,53 @@ def render():
     # TAB 1: DASHBOARD
     # ══════════════════════════════════════════════════════════════
     with tab_dash:
+        # ── Hero: Lifetime Performance (TOP OF PAGE) ──
+        current_year = dt.date.today().year
+        if bt_results:
+            lifetime_start = bt_results[0].starting_value
+            lifetime_end = bt_results[-1].ending_value
+            lifetime_mult = lifetime_end / lifetime_start
+            start_year_bt = bt_results[0].year
+            ytd_result = next((r for r in bt_results if r.year == current_year), None)
+            prior_year_result = next((r for r in bt_results if r.year == current_year - 1), None)
+
+            ytd_pct = ytd_result.total_return_pct if ytd_result else 0
+            ytd_color = "#17BF63" if ytd_pct >= 0 else "#E0245E"
+            py_pct = prior_year_result.total_return_pct if prior_year_result else 0
+            py_color = "#17BF63" if py_pct >= 0 else "#E0245E"
+
+            st.markdown(f"""<div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 16px;
+                padding: 20px; background: linear-gradient(135deg, rgba(29,161,242,0.06), rgba(23,191,99,0.04));
+                margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: center;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
+                            letter-spacing: 0.1em;">Backtested {start_year_bt}–{current_year}</div>
+                        <div style="font-size: 2.8em; font-weight: 900; color: #17BF63;
+                            letter-spacing: -0.03em; line-height: 1.1;">${lifetime_end:,.0f}</div>
+                        <div style="font-size: 0.85em; color: #8899A6; margin-top: 4px;">
+                            {lifetime_mult:,.0f}x from $100K</div>
+                    </div>
+                    <div style="text-align: center; border-left: 1px solid #38444D; border-right: 1px solid #38444D;
+                        padding: 0 16px;">
+                        <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
+                            letter-spacing: 0.1em;">{current_year - 1} Return</div>
+                        <div style="font-size: 2.2em; font-weight: 800; color: {py_color};
+                            line-height: 1.2;">{py_pct:+.1f}%</div>
+                        <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
+                            vs TQQQ B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
+                            letter-spacing: 0.1em;">{current_year} YTD</div>
+                        <div style="font-size: 2.2em; font-weight: 800; color: {ytd_color};
+                            line-height: 1.2;">{ytd_pct:+.1f}%</div>
+                        <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
+                            vs TQQQ B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
+                    </div>
+                </div>
+            </div>""", unsafe_allow_html=True)
+
         # Market Status
         nasdaq_regime = detect_market_regime(nasdaq)
         sp_regime = detect_market_regime(sp500)
@@ -169,80 +216,7 @@ def render():
             </div>
         </div>""", unsafe_allow_html=True)
 
-        # ── Hero: Lifetime Performance ──
-        current_year = dt.date.today().year
-        if bt_results:
-            lifetime_start = bt_results[0].starting_value
-            lifetime_end = bt_results[-1].ending_value
-            lifetime_ret = ((lifetime_end / lifetime_start) - 1) * 100
-            lifetime_mult = lifetime_end / lifetime_start
-            start_year_bt = bt_results[0].year
-
-            st.markdown(f"""<div style="border: 1px solid #1DA1F233; border-radius: 16px;
-                padding: 24px; background: linear-gradient(135deg, #1DA1F208, #17BF6308);
-                margin-bottom: 16px; text-align: center;">
-                <div style="font-size: 0.82em; color: #8899A6; text-transform: uppercase;
-                    letter-spacing: 0.1em; margin-bottom: 8px;">
-                    Backtested {start_year_bt}–{current_year} · $100K Starting Capital</div>
-                <div style="font-size: 3em; font-weight: 900; color: #17BF63;
-                    letter-spacing: -0.03em; line-height: 1.1;">
-                    ${lifetime_end:,.0f}</div>
-                <div style="font-size: 1.1em; color: #E7E9EA; margin-top: 6px;">
-                    {lifetime_mult:,.0f}x return &nbsp;·&nbsp; {lifetime_ret:+,.0f}% total</div>
-            </div>""", unsafe_allow_html=True)
-
-        # ── YTD + Prior Year + Latest Trade ──
-        ytd_result = next((r for r in bt_results if r.year == current_year), None)
-        prior_year_result = next((r for r in bt_results if r.year == current_year - 1), None)
-        all_trades_flat = [t for r in bt_results for t in r.trades]
-        latest_trade = all_trades_flat[-1] if all_trades_flat else None
-
-        pc1, pc2, pc3 = st.columns(3)
-
-        with pc1:
-            if prior_year_result:
-                py_color = "#17BF63" if prior_year_result.total_return_pct >= 0 else "#E0245E"
-                py_pnl = prior_year_result.ending_value - prior_year_result.starting_value
-                st.markdown(f"""<div style="border: 1px solid {py_color}33; border-radius: 12px;
-                    padding: 16px; background: {py_color}08;">
-                    <div style="font-size: 0.78em; color: #8899A6; text-transform: uppercase;
-                        letter-spacing: 0.05em;">{current_year - 1} Full Year</div>
-                    <div style="font-size: 1.6em; font-weight: 800; color: {py_color}; margin-top: 4px;">
-                        {prior_year_result.total_return_pct:+.1f}%</div>
-                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
-                        {prior_year_result.num_trades} trades · B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-
-        with pc2:
-            if ytd_result:
-                ytd_color = "#17BF63" if ytd_result.total_return_pct >= 0 else "#E0245E"
-                st.markdown(f"""<div style="border: 1px solid {ytd_color}33; border-radius: 12px;
-                    padding: 16px; background: {ytd_color}08;">
-                    <div style="font-size: 0.78em; color: #8899A6; text-transform: uppercase;
-                        letter-spacing: 0.05em;">{current_year} YTD</div>
-                    <div style="font-size: 1.6em; font-weight: 800; color: {ytd_color}; margin-top: 4px;">
-                        {ytd_result.total_return_pct:+.1f}%</div>
-                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
-                        {ytd_result.num_trades} trades · B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
-                </div>""", unsafe_allow_html=True)
-
-        with pc3:
-            if latest_trade:
-                t = latest_trade
-                t_color = "#17BF63" if t.return_pct > 0 else "#E0245E"
-                st.markdown(f"""<div style="border: 1px solid {t_color}33; border-radius: 12px;
-                    padding: 16px; background: {t_color}08;">
-                    <div style="font-size: 0.78em; color: #8899A6; text-transform: uppercase;
-                        letter-spacing: 0.05em;">Latest Trade</div>
-                    <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
-                        <span style="font-size: 1.6em; font-weight: 800; color: {t_color};">
-                            {t.return_pct:+.1f}%</span>
-                        <span style="background: rgba(29,161,242,0.15); color: #1DA1F2; padding: 2px 8px;
-                            border-radius: 20px; font-size: 0.7em; font-weight: 600;">{t.signal_type}</span>
-                    </div>
-                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">
-                        {t.entry_date} → {t.exit_date} ({t.duration_days}d)</div>
-                </div>""", unsafe_allow_html=True)
+        # (Hero section moved to top of page)
 
         # ── Market Health Panel ──
         st.markdown("### Market Health")
@@ -392,13 +366,11 @@ def render():
             _health_card("S&P 500", sp500, len(sp_dist))
 
         # Position sizing guidance based on market health
-        st.markdown(f"""<div style="
-            background: {regime_color}08; border: 1px solid {regime_color}22;
+        alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
+        st.markdown(f"""<div style="background: {regime_color}08; border: 1px solid {regime_color}22;
             border-left: 4px solid {regime_color}; border-radius: 10px;
             padding: 14px 18px; margin: 12px 0 20px 0; font-size: 0.9em; color: #E7E9EA;">
-            📐 <b>Position Sizing ({regime_str}):</b> {exit_desc}
-            Allocation: <b>{'50%' if above_200 else '0% (cash)'}</b>
-            {'· Death cross: non-FTD entries capped at 25%' if not golden and above_200 else ''}
+            <b>Position Sizing ({regime_str}):</b> {exit_desc} Allocation: <b>{alloc_label}</b>
         </div>""", unsafe_allow_html=True)
 
         # Buy Signals
