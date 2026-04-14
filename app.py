@@ -51,32 +51,34 @@ st.markdown("""
 
     /* Tab styling — full width, premium */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 4px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 14px;
-        padding: 5px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.025);
+        border-radius: 16px;
+        padding: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
         width: 100%;
         display: flex;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        color: #6b7280;
+        border-radius: 12px;
+        color: #9ca3af;
         font-weight: 600;
-        font-size: 0.88em;
-        padding: 12px 16px;
+        font-size: 1.05em;
+        padding: 14px 20px;
         transition: all 0.25s ease;
         flex: 1;
         justify-content: center;
+        letter-spacing: 0.01em;
     }
     .stTabs [data-baseweb="tab"]:hover {
-        color: #9ca3af;
-        background: rgba(255, 255, 255, 0.03);
+        color: #d1d5db;
+        background: rgba(255, 255, 255, 0.04);
     }
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.08)) !important;
-        color: #a5b4fc !important;
-        box-shadow: 0 2px 10px rgba(99, 102, 241, 0.1);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.10)) !important;
+        color: #c7d2fe !important;
+        box-shadow: 0 2px 12px rgba(99, 102, 241, 0.12);
+        font-weight: 700;
     }
 
     /* Buttons — gradient */
