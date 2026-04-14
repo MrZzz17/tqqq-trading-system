@@ -880,8 +880,8 @@ in a taxable account.""")
                 ))
                 eq_fig.update_layout(
                     template="plotly_dark",
-                    height=400,
-                    margin=dict(l=10, r=10, t=40, b=10),
+                    height=450,
+                    margin=dict(l=10, r=10, t=40, b=40),
                     title=dict(text="Equity Curve — Cumulative Portfolio Value",
                                font=dict(size=16, color="#f0f0f0")),
                     paper_bgcolor="rgba(0,0,0,0)",
@@ -890,9 +890,31 @@ in a taxable account.""")
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
                     ),
-                    xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
+                    xaxis=dict(
+                        gridcolor="rgba(255,255,255,0.04)",
+                        rangeslider=dict(visible=True, thickness=0.06),
+                        rangeselector=dict(
+                            buttons=[
+                                dict(count=3, label="3M", step="month", stepmode="backward"),
+                                dict(count=6, label="6M", step="month", stepmode="backward"),
+                                dict(count=1, label="1Y", step="year", stepmode="backward"),
+                                dict(count=3, label="3Y", step="year", stepmode="backward"),
+                                dict(count=5, label="5Y", step="year", stepmode="backward"),
+                                dict(step="all", label="All"),
+                            ],
+                            bgcolor="rgba(255,255,255,0.03)",
+                            activecolor="rgba(99,102,241,0.2)",
+                            font=dict(color="#9ca3af", size=12),
+                            x=0, y=1.08,
+                        ),
+                    ),
+                    dragmode="zoom",
                 )
-                st.plotly_chart(eq_fig, use_container_width=True)
+                eq_fig.update_xaxes(
+                    rangeslider_bgcolor="rgba(255,255,255,0.02)",
+                )
+                st.plotly_chart(eq_fig, use_container_width=True,
+                                config={"scrollZoom": True})
 
             # ── Summary table with max drawdown ──
             summary_rows = []
