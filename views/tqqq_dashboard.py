@@ -156,7 +156,71 @@ def render():
     # TAB 1: DASHBOARD
     # ══════════════════════════════════════════════════════════════
     with tab_dash:
-        # ── Hero: Lifetime Performance (TOP OF PAGE) ──
+        # ── Market Status + Action (VERY TOP) ──
+        nasdaq_regime = detect_market_regime(nasdaq)
+        sp_regime = detect_market_regime(sp500)
+        tqqq_delta = (tqqq.iloc[-1]['Close'] - tqqq.iloc[-2]['Close']) / tqqq.iloc[-2]['Close'] * 100
+        qqq_delta = (qqq.iloc[-1]['Close'] - qqq.iloc[-2]['Close']) / qqq.iloc[-2]['Close'] * 100
+        REGIME_SHORT = {"Confirmed Uptrend": "Uptrend", "Uptrend Under Pressure": "Caution",
+                        "Market in Correction": "Correction"}
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
+        c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
+        nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
+        sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
+        nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
+        sp_icon = REGIME_ICONS.get(sp_regime.color, '')
+        c3.metric("Nasdaq", f"{nq_icon} {nq_short}",
+                   delta=f"{nasdaq_regime.dist_day_count} dist days", delta_color="off")
+        c4.metric("SPY", f"{sp_icon} {sp_short}",
+                   delta=f"{sp_regime.dist_day_count} dist days", delta_color="off")
+        st.caption(f"Data as of {data_date.strftime('%b %d, %Y')}")
+
+        # Live action status
+        qqq_close_val = float(qqq.iloc[-1]["Close"])
+        qqq_sma200_val = qqq.iloc[-1].get("SMA_200")
+        qqq_above_200_now = (qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
+                             and qqq_close_val > float(qqq_sma200_val))
+        w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
+        macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
+
+        if qqq_above_200_now and macd_pos_now:
+            act_text = "BE INVESTED — QQQ above 200d + MACD positive. Hold 100% TQQQ."
+            act_color = "#34d399"; act_icon = "✅"
+        elif qqq_above_200_now:
+            act_text = "CAUTION — QQQ above 200d but MACD negative. Hold 50% TQQQ."
+            act_color = "#fbbf24"; act_icon = "⚠️"
+        else:
+            act_text = "STAY OUT — QQQ below 200-day SMA. Cash or SGOV only."
+            act_color = "#f87171"; act_icon = "🔴"
+
+        all_trades_flat = [t for r in bt_results for t in r.trades]
+        lt = all_trades_flat[-1] if all_trades_flat else None
+        lt_color = "#34d399" if (lt and lt.return_pct > 0) else "#f87171"
+        today_str = dt.date.today().strftime("%B %d, %Y")
+
+        st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 12px;
+            padding: 16px; background: {act_color}06; margin: 8px 0 16px 0;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                <div>
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.1em;">Today — {today_str}</div>
+                    <div style="font-size: 1.1em; font-weight: 700; color: {act_color}; margin-top: 4px;">
+                        {act_icon} {act_text}</div>
+                </div>
+                <div style="border-left: 1px solid rgba(255,255,255,0.06); padding-left: 16px;">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.1em;">Last Trade</div>
+                    {'<div style="margin-top: 4px;">' +
+                     f'<span style="font-size: 1.2em; font-weight: 800; color: {lt_color};">{lt.return_pct:+.1f}%</span>' +
+                     f' <span style="background: rgba(129,140,248,0.15); color: #a5b4fc; padding: 2px 8px; border-radius: 20px; font-size: 0.68em; font-weight: 600;">{lt.signal_type}</span>' +
+                     f'</div><div style="font-size: 0.72em; color: #6b7280; margin-top: 2px;">{lt.entry_date} → {lt.exit_date}</div>'
+                     if lt else '<div style="color: #6b7280;">No trades</div>'}
+                </div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
         if bt_results:
             lifetime_start = bt_results[0].starting_value
@@ -286,95 +350,7 @@ def render():
             st.plotly_chart(eq_fig, use_container_width=True,
                             config={"scrollZoom": True, "displayModeBar": False})
 
-        # Market Status
-        nasdaq_regime = detect_market_regime(nasdaq)
-        sp_regime = detect_market_regime(sp500)
-        tqqq_delta = (tqqq.iloc[-1]['Close'] - tqqq.iloc[-2]['Close']) / tqqq.iloc[-2]['Close'] * 100
-        qqq_delta = (qqq.iloc[-1]['Close'] - qqq.iloc[-2]['Close']) / qqq.iloc[-2]['Close'] * 100
-
-        REGIME_SHORT = {
-            "Confirmed Uptrend": "Uptrend",
-            "Uptrend Under Pressure": "Caution",
-            "Market in Correction": "Correction",
-        }
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
-        c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
-        nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
-        sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
-        nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
-        sp_icon = REGIME_ICONS.get(sp_regime.color, '')
-        c3.metric("Nasdaq", f"{nq_icon} {nq_short}",
-                   delta=f"{nasdaq_regime.dist_day_count} dist days", delta_color="off")
-        c4.metric("SPY", f"{sp_icon} {sp_short}",
-                   delta=f"{sp_regime.dist_day_count} dist days", delta_color="off")
-        st.caption(f"Data as of {data_date.strftime('%b %d, %Y')} · Yahoo Finance (delayed)")
-
-        # (Alert bar removed — replaced by System Signals section below)
-
-        # ── Live Status: Current Position & Action Required ──
-        all_trades_flat = [t for r in bt_results for t in r.trades]
-        latest_trade = all_trades_flat[-1] if all_trades_flat else None
-        today_str = dt.date.today().strftime("%B %d, %Y")
-
-        # Determine current position status
-        if latest_trade:
-            last_exit = latest_trade.exit_date
-            last_entry = latest_trade.entry_date
-            is_in_position = (last_exit == bt_results[-1].trades[-1].exit_date
-                              and latest_trade.exit_date >= dt.date.today().strftime("%Y-%m-%d"))
-
-        # Check what action is needed today
-        qqq_close_val = float(qqq.iloc[-1]["Close"])
-        qqq_sma200_val = qqq.iloc[-1].get("SMA_200")
-        qqq_above_200_now = (qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
-                             and qqq_close_val > float(qqq_sma200_val))
-
-        w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
-        macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
-
-        if qqq_above_200_now and macd_pos_now:
-            action_text = "BE INVESTED — QQQ above 200d + MACD positive. Hold 100% TQQQ."
-            action_color = "#17BF63"
-            action_icon = "✅"
-        elif qqq_above_200_now and not macd_pos_now:
-            action_text = "CAUTION — QQQ above 200d but MACD negative. Hold 50% TQQQ, watch for exit."
-            action_color = "#FFAD1F"
-            action_icon = "⚠️"
-        else:
-            action_text = "STAY OUT — QQQ below 200-day SMA. Cash or SGOV only."
-            action_color = "#E0245E"
-            action_icon = "🔴"
-
-        lt = latest_trade
-        lt_color = "#17BF63" if (lt and lt.return_pct > 0) else "#E0245E"
-
-        st.markdown(f"""<div style="border: 1px solid {action_color}33; border-radius: 12px;
-            padding: 18px; background: {action_color}06; margin-bottom: 16px;">
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
-                <div>
-                    <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
-                        letter-spacing: 0.1em;">Today — {today_str}</div>
-                    <div style="font-size: 1.2em; font-weight: 700; color: {action_color}; margin-top: 6px;">
-                        {action_icon} {action_text}</div>
-                    <div style="font-size: 0.82em; color: #8899A6; margin-top: 8px;">
-                        All signals evaluate at <b>market close</b>. Execute trades at <b>next day's open</b>.
-                        Check this dashboard after 4pm ET daily.</div>
-                </div>
-                <div style="border-left: 1px solid #38444D; padding-left: 16px;">
-                    <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase;
-                        letter-spacing: 0.1em;">Last Trade</div>
-                    {'<div style="margin-top: 6px;">' +
-                     f'<span style="font-size: 1.3em; font-weight: 800; color: {lt_color};">{lt.return_pct:+.1f}%</span>' +
-                     f' <span style="background: rgba(29,161,242,0.15); color: #1DA1F2; padding: 2px 8px; border-radius: 20px; font-size: 0.7em; font-weight: 600;">{lt.signal_type}</span>' +
-                     f'</div><div style="font-size: 0.78em; color: #8899A6; margin-top: 4px;">' +
-                     f'{lt.entry_date} → {lt.exit_date} ({lt.duration_days}d)</div>' +
-                     f'<div style="font-size: 0.78em; color: #8899A6;">' +
-                     f'${lt.cash_deployed:,.0f} deployed · ${lt.portfolio_after:,.0f} after</div>'
-                     if lt else '<div style="color: #657786;">No trades yet</div>'}
-                </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+        # (Market status and live action moved to top of page)
 
         # ── Market Health Panel ──
         st.markdown("### Market Health")
