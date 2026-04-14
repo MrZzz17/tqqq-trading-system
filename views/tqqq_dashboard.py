@@ -248,7 +248,7 @@ def render():
                     position: relative;">
                     <div style="text-align: center;">
                         <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                            letter-spacing: 0.12em; font-weight: 500;">Backtested {start_year_bt}–{current_year}</div>
+                            letter-spacing: 0.12em; font-weight: 500;">Return {start_year_bt} – YTD {current_year}</div>
                         <div style="font-size: 2.8em; font-weight: 900; color: #34d399;
                             letter-spacing: -0.04em; line-height: 1.1;
                             font-family: 'JetBrains Mono', monospace;">${lifetime_end:,.0f}</div>
