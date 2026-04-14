@@ -111,6 +111,8 @@ def build_tqqq_chart(
         margin=dict(l=10, r=10, t=30, b=10),
         xaxis_rangeslider_visible=False,
         xaxis=dict(range=[x_start, x_end]),
+        yaxis=dict(autorange=True, fixedrange=False),
+        yaxis2=dict(autorange=True, fixedrange=False),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
             font=dict(color="#9ca3af", size=11),
@@ -119,7 +121,7 @@ def build_tqqq_chart(
         plot_bgcolor=BG_COLOR,
     )
     fig.update_xaxes(gridcolor=GRID_COLOR, zerolinecolor=GRID_COLOR)
-    fig.update_yaxes(gridcolor=GRID_COLOR, zerolinecolor=GRID_COLOR)
+    fig.update_yaxes(gridcolor=GRID_COLOR, zerolinecolor=GRID_COLOR, autorange=True)
 
     return fig
 

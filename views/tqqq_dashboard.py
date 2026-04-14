@@ -341,14 +341,16 @@ def render():
                 plot_bgcolor="rgba(10,15,26,1)",
                 yaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            tickprefix="$", tickformat=",",
-                           showgrid=True, zeroline=False),
+                           showgrid=True, zeroline=False,
+                           autorange=True, fixedrange=False),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            showgrid=False),
                 showlegend=False,
                 dragmode="zoom",
             )
             st.plotly_chart(eq_fig, use_container_width=True,
-                            config={"scrollZoom": True, "displayModeBar": False})
+                            config={"scrollZoom": True, "displayModeBar": False,
+                                    "responsive": True})
 
         # (Market status and live action moved to top of page)
 
@@ -962,6 +964,11 @@ in a taxable account.""")
                         ),
                     ),
                     dragmode="zoom",
+                    yaxis=dict(
+                        gridcolor="rgba(255,255,255,0.04)",
+                        tickprefix="$", tickformat=",",
+                        autorange=True, fixedrange=False,
+                    ),
                 )
                 eq_fig.update_xaxes(
                     rangeslider_bgcolor="rgba(255,255,255,0.02)",
