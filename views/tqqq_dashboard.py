@@ -212,49 +212,79 @@ def render():
             </div>""", unsafe_allow_html=True)
 
         # ── Equity Chart + Key Stats on main page ──
-        if bt_equity:
+        if bt_equity and bt_results:
             import plotly.graph_objects as go
+
+            total_trades = sum(r.num_trades for r in bt_results)
+            overall_wr = sum(r.win_rate_pct * r.num_trades for r in bt_results if r.num_trades > 0) / max(total_trades, 1)
+            total_max_dd = 0.0
+            pk = list(bt_equity.values())[0]
+            for v in bt_equity.values():
+                if v > pk: pk = v
+                dd = ((v - pk) / pk) * 100
+                if dd < total_max_dd: total_max_dd = dd
+
+            # Stats row ABOVE the chart
+            st.markdown(f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+                margin-bottom: 12px;">
+                <div style="text-align: center; padding: 12px; border: 1px solid rgba(255,255,255,0.06);
+                    border-radius: 12px; background: rgba(255,255,255,0.02);">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.08em;">Starting Capital</div>
+                    <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
+                        font-family: 'JetBrains Mono', monospace;">$100,000</div>
+                </div>
+                <div style="text-align: center; padding: 12px; border: 1px solid rgba(52,211,153,0.15);
+                    border-radius: 12px; background: rgba(52,211,153,0.04);">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.08em;">Current Value</div>
+                    <div style="font-size: 1.4em; font-weight: 800; color: #34d399;
+                        font-family: 'JetBrains Mono', monospace;">${bt_results[-1].ending_value:,.0f}</div>
+                </div>
+                <div style="text-align: center; padding: 12px; border: 1px solid rgba(248,113,113,0.15);
+                    border-radius: 12px; background: rgba(248,113,113,0.04);">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.08em;">Max Drawdown</div>
+                    <div style="font-size: 1.4em; font-weight: 800; color: #f87171;
+                        font-family: 'JetBrains Mono', monospace;">{total_max_dd:.1f}%</div>
+                </div>
+                <div style="text-align: center; padding: 12px; border: 1px solid rgba(255,255,255,0.06);
+                    border-radius: 12px; background: rgba(255,255,255,0.02);">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.08em;">{total_trades} Trades</div>
+                    <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
+                        font-family: 'JetBrains Mono', monospace;">{overall_wr:.0f}% WR</div>
+                </div>
+            </div>""", unsafe_allow_html=True)
+
+            # Compact equity chart
             eq_dates = sorted(bt_equity.keys())
             eq_vals = [bt_equity[d] for d in eq_dates]
-
             eq_fig = go.Figure()
             eq_fig.add_trace(go.Scatter(
                 x=eq_dates, y=eq_vals,
-                mode="lines", name="Strategy",
+                mode="lines",
                 line=dict(color="#818cf8", width=2),
-                fill="tozeroy", fillcolor="rgba(129,140,248,0.05)",
+                fill="tozeroy",
+                fillcolor="rgba(129,140,248,0.08)",
+                hovertemplate="<b>%{x|%b %d, %Y}</b><br>$%{y:,.0f}<extra></extra>",
             ))
             eq_fig.update_layout(
                 template="plotly_dark",
-                height=280,
-                margin=dict(l=10, r=10, t=10, b=10),
+                height=220,
+                margin=dict(l=0, r=0, t=0, b=0),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(10,15,26,1)",
-                yaxis=dict(gridcolor="rgba(255,255,255,0.04)",
-                           tickprefix="$", tickformat=","),
-                xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
+                yaxis=dict(gridcolor="rgba(255,255,255,0.03)",
+                           tickprefix="$", tickformat=",",
+                           showgrid=True, zeroline=False),
+                xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
+                           showgrid=False),
                 showlegend=False,
                 dragmode="zoom",
             )
             st.plotly_chart(eq_fig, use_container_width=True,
                             config={"scrollZoom": True, "displayModeBar": False})
-
-        if bt_results:
-            total_trades = sum(r.num_trades for r in bt_results)
-            overall_wr = sum(r.win_rate_pct * r.num_trades for r in bt_results if r.num_trades > 0) / max(total_trades, 1)
-            total_max_dd = 0.0
-            if bt_equity:
-                pk = list(bt_equity.values())[0]
-                for v in bt_equity.values():
-                    if v > pk: pk = v
-                    dd = ((v - pk) / pk) * 100
-                    if dd < total_max_dd: total_max_dd = dd
-
-            km1, km2, km3, km4 = st.columns(4)
-            km1.metric("Starting Capital", "$100,000")
-            km2.metric("Current Value", f"${bt_results[-1].ending_value:,.0f}")
-            km3.metric("Max Drawdown", f"{total_max_dd:.1f}%")
-            km4.metric(f"Trades ({total_trades})", f"{overall_wr:.0f}% Win Rate")
 
         # Market Status
         nasdaq_regime = detect_market_regime(nasdaq)
