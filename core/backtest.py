@@ -163,8 +163,8 @@ def _run_continuous(start_year: int, end_year: int):
         price = float(tqqq.loc[date, "Close"])
         total = cash + shares * price
 
-        # Idle yield
-        if cash > 0:
+        # Idle yield (skip first day so starting capital is exactly $100K)
+        if cash > 0 and i > 0:
             cash *= (1 + SGOV_DAILY_YIELD)
             total = cash + shares * price
 
