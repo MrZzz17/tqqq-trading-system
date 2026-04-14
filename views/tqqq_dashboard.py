@@ -881,9 +881,10 @@ in a taxable account.""")
                 eq_fig.update_layout(
                     template="plotly_dark",
                     height=450,
-                    margin=dict(l=10, r=10, t=40, b=40),
+                    margin=dict(l=10, r=10, t=80, b=40),
                     title=dict(text="Equity Curve — Cumulative Portfolio Value",
-                               font=dict(size=16, color="#f0f0f0")),
+                               font=dict(size=16, color="#f0f0f0"),
+                               y=0.95, x=0.5, xanchor="center"),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(10,15,26,1)",
                     yaxis=dict(
@@ -905,7 +906,7 @@ in a taxable account.""")
                             bgcolor="rgba(255,255,255,0.03)",
                             activecolor="rgba(99,102,241,0.2)",
                             font=dict(color="#9ca3af", size=12),
-                            x=0, y=1.08,
+                            x=0, y=1.15,
                         ),
                     ),
                     dragmode="zoom",
