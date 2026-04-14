@@ -211,6 +211,51 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
+        # ── Equity Chart + Key Stats on main page ──
+        if bt_equity:
+            import plotly.graph_objects as go
+            eq_dates = sorted(bt_equity.keys())
+            eq_vals = [bt_equity[d] for d in eq_dates]
+
+            eq_fig = go.Figure()
+            eq_fig.add_trace(go.Scatter(
+                x=eq_dates, y=eq_vals,
+                mode="lines", name="Strategy",
+                line=dict(color="#818cf8", width=2),
+                fill="tozeroy", fillcolor="rgba(129,140,248,0.05)",
+            ))
+            eq_fig.update_layout(
+                template="plotly_dark",
+                height=280,
+                margin=dict(l=10, r=10, t=10, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(10,15,26,1)",
+                yaxis=dict(gridcolor="rgba(255,255,255,0.04)",
+                           tickprefix="$", tickformat=","),
+                xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
+                showlegend=False,
+                dragmode="zoom",
+            )
+            st.plotly_chart(eq_fig, use_container_width=True,
+                            config={"scrollZoom": True, "displayModeBar": False})
+
+        if bt_results:
+            total_trades = sum(r.num_trades for r in bt_results)
+            overall_wr = sum(r.win_rate_pct * r.num_trades for r in bt_results if r.num_trades > 0) / max(total_trades, 1)
+            total_max_dd = 0.0
+            if bt_equity:
+                pk = list(bt_equity.values())[0]
+                for v in bt_equity.values():
+                    if v > pk: pk = v
+                    dd = ((v - pk) / pk) * 100
+                    if dd < total_max_dd: total_max_dd = dd
+
+            km1, km2, km3, km4 = st.columns(4)
+            km1.metric("Starting Capital", "$100,000")
+            km2.metric("Current Value", f"${bt_results[-1].ending_value:,.0f}")
+            km3.metric("Max Drawdown", f"{total_max_dd:.1f}%")
+            km4.metric(f"Trades ({total_trades})", f"{overall_wr:.0f}% Win Rate")
+
         # Market Status
         nasdaq_regime = detect_market_regime(nasdaq)
         sp_regime = detect_market_regime(sp500)
