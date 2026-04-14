@@ -641,7 +641,8 @@ def render():
         year_now = dt.datetime.now().year
         swings = detect_swings(tqqq, min_move_pct=swing_min_pct, year_filter=year_now - 1)
         fig = build_tqqq_chart(tqqq, swings=swings, lookback_days=chart_lookback)
-        st.plotly_chart(fig, key="main_chart", use_container_width=True)
+        st.plotly_chart(fig, key="main_chart", use_container_width=True,
+                        config={"scrollZoom": True})
 
         # MA Table
         latest = tqqq.iloc[-1]
