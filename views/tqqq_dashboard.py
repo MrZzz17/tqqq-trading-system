@@ -324,12 +324,15 @@ def render():
                   and float(qqq_sma50_val) > float(qqq_sma200_val))
         if golden and above_200:
             regime_str = "Strong Bull"
+            regime_color = "#17BF63"
             exit_desc = "Holding through normal pullbacks. Exit on 2 closes below QQQ 50-day."
         elif above_200:
             regime_str = "Bull"
+            regime_color = "#FFAD1F"
             exit_desc = "Cautious hold. Exit on 2 closes below QQQ 21-day EMA."
         else:
             regime_str = "Bear"
+            regime_color = "#E0245E"
             exit_desc = "QQQ below 200-day. Stay in cash."
         alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
 
