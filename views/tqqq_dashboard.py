@@ -74,22 +74,26 @@ def _styled_card(title: str, content: str, border_color: str = "#38444D") -> str
 
 def render():
     st.markdown(f"""
-        <div style="text-align: center; padding: 30px 0 16px 0;">
-            <a href="{TWITTER_URL}" target="_blank" style="text-decoration: none;">
+        <div style="text-align: center; padding: 32px 0 20px 0; position: relative;">
+            <div style="position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+                width: 400px; height: 200px; background: radial-gradient(ellipse,
+                rgba(99,102,241,0.12), transparent 70%); pointer-events: none;"></div>
+            <a href="{TWITTER_URL}" target="_blank" style="text-decoration: none; position: relative;">
                 <img src="{LOGO_URL}" alt="MrZzz"
-                     style="width: 56px; height: 56px; border-radius: 50%;
-                            border: 2px solid rgba(99,102,241,0.5); margin-bottom: 12px;
-                            box-shadow: 0 0 30px rgba(99,102,241,0.15);">
+                     style="width: 52px; height: 52px; border-radius: 50%;
+                            border: 2px solid rgba(99,102,241,0.6); margin-bottom: 14px;
+                            box-shadow: 0 0 40px rgba(99,102,241,0.2), 0 0 80px rgba(99,102,241,0.05);">
             </a>
-            <h1 style="margin-bottom: 0; font-size: 2em; color: #f0f0f0;
-                        letter-spacing: -0.03em; font-weight: 800;">
+            <h1 style="margin-bottom: 0; font-size: 1.9em; color: #f5f5f5;
+                        letter-spacing: -0.03em; font-weight: 800; position: relative;">
                 TQQQ Trading System
             </h1>
-            <p style="color: #6b7280; font-size: 0.92em; margin-top: 6px; font-weight: 400;">
+            <p style="color: #6b7280; font-size: 0.88em; margin-top: 8px; font-weight: 400;
+                position: relative;">
                 Rules-based swing trading &nbsp;&#183;&nbsp; 3x leveraged Nasdaq 100
                 &nbsp;&#183;&nbsp;
                 <a href="{TWITTER_URL}" target="_blank"
-                   style="color: #818cf8; text-decoration: none; font-weight: 600;">
+                   style="color: #a5b4fc; text-decoration: none; font-weight: 600;">
                     by @MrZzz</a>
             </p>
         </div>

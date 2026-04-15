@@ -26,11 +26,15 @@ st.markdown("""
 
     /* Metric cards — glass morphism */
     [data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(99, 102, 241, 0.02));
+        border: 1px solid rgba(255, 255, 255, 0.07);
         border-radius: 16px;
         padding: 20px;
         backdrop-filter: blur(10px);
+        transition: border-color 0.2s ease;
+    }
+    [data-testid="stMetric"]:hover {
+        border-color: rgba(99, 102, 241, 0.15);
     }
     [data-testid="stMetricLabel"] {
         color: #6b7280 !important;
