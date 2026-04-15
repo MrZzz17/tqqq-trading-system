@@ -462,10 +462,18 @@ def render():
                            showgrid=True, zeroline=False,
                            range=[y_min, y_max], fixedrange=True),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
-                           showgrid=False),
+                           showgrid=False, fixedrange=True),
                 showlegend=False,
             )
-            st.plotly_chart(eq_fig, use_container_width=True)
+            st.caption("Use Period above to change the time window — chart Y-axis matches that window.")
+            st.plotly_chart(
+                eq_fig,
+                use_container_width=True,
+                config={
+                    "scrollZoom": False,
+                    "displayModeBar": False,
+                },
+            )
 
         # (Last Trade + Allocation moved to top)
 
@@ -989,9 +997,17 @@ in a taxable account.""")
                         tickprefix="$", tickformat=",",
                         range=[y_min2, y_max2], fixedrange=True,
                     ),
-                    xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
+                    xaxis=dict(gridcolor="rgba(255,255,255,0.04)", fixedrange=True),
                 )
-                st.plotly_chart(eq_fig2, use_container_width=True)
+                st.caption("Use Period above to change the time window — chart Y-axis matches that window.")
+                st.plotly_chart(
+                    eq_fig2,
+                    use_container_width=True,
+                    config={
+                        "scrollZoom": False,
+                        "displayModeBar": False,
+                    },
+                )
 
             # ── Summary table with max drawdown ──
             summary_rows = []
