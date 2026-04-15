@@ -206,32 +206,32 @@ def render():
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;">
-                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center;">
                         <div>
-                            <div style="font-size: 2.2em; font-weight: 900; color: #34d399;
-                                letter-spacing: -0.02em;">BUY</div>
-                            <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
+                            <div style="font-size: 3em; font-weight: 900; color: #34d399;
+                                letter-spacing: -0.02em; line-height: 1;">BUY</div>
+                            <div style="font-size: 1.3em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">{lt.entry_date}</div>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Position</div>
-                                <div style="font-size: 1.5em; font-weight: 900; color: #818cf8;
+                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">Position</div>
+                                <div style="font-size: 2em; font-weight: 900; color: #818cf8;
                                     font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Entry</div>
-                                <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
+                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">Entry</div>
+                                <div style="font-size: 1.6em; font-weight: 700; color: #f0f0f0;
                                     font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Now</div>
-                                <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
+                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">Now</div>
+                                <div style="font-size: 1.6em; font-weight: 700; color: #f0f0f0;
                                     font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">P&L</div>
-                                <div style="font-size: 1.5em; font-weight: 900; color: {unr_color};
+                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                                <div style="font-size: 2em; font-weight: 900; color: {unr_color};
                                     font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
                             </div>
                         </div>
