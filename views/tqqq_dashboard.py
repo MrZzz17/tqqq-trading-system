@@ -437,7 +437,7 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # Compact equity chart
+            # Compact equity chart — use range slider for zoom, Y auto-fits
             eq_dates = sorted(bt_equity.keys())
             eq_vals = [bt_equity[d] for d in eq_dates]
             eq_fig = go.Figure()
@@ -451,22 +451,21 @@ def render():
             ))
             eq_fig.update_layout(
                 template="plotly_dark",
-                height=220,
-                margin=dict(l=0, r=0, t=0, b=0),
+                height=260,
+                margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(10,15,26,1)",
                 yaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            tickprefix="$", tickformat=",",
                            showgrid=True, zeroline=False,
-                           autorange=True, fixedrange=False),
+                           fixedrange=True),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
-                           showgrid=False),
+                           showgrid=False,
+                           rangeslider=dict(visible=True, thickness=0.05)),
                 showlegend=False,
-                dragmode="zoom",
             )
             st.plotly_chart(eq_fig, use_container_width=True,
-                            config={"scrollZoom": True, "displayModeBar": False,
-                                    "responsive": True})
+                            config={"displayModeBar": False})
 
         # (Last Trade + Allocation moved to top)
 
@@ -759,8 +758,7 @@ def render():
         year_now = dt.datetime.now().year
         swings = detect_swings(tqqq, min_move_pct=swing_min_pct, year_filter=year_now - 1)
         fig = build_tqqq_chart(tqqq, swings=swings, lookback_days=chart_lookback)
-        st.plotly_chart(fig, key="main_chart", use_container_width=True,
-                        config={"scrollZoom": True})
+        st.plotly_chart(fig, key="main_chart", use_container_width=True)
 
         # MA Table
         latest = tqqq.iloc[-1]
@@ -1051,16 +1049,16 @@ in a taxable account.""")
                 eq_fig.update_layout(
                     template="plotly_dark",
                     height=450,
-                    margin=dict(l=10, r=10, t=80, b=40),
+                    margin=dict(l=10, r=10, t=60, b=10),
                     title=dict(text="Equity Curve — Cumulative Portfolio Value",
                                font=dict(size=16, color="#f0f0f0"),
-                               y=0.95, x=0.5, xanchor="center"),
+                               y=0.97, x=0.5, xanchor="center"),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(10,15,26,1)",
                     yaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
-                        autorange=True, fixedrange=False,
+                        fixedrange=True,
                     ),
                     xaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
@@ -1077,16 +1075,11 @@ in a taxable account.""")
                             bgcolor="rgba(255,255,255,0.03)",
                             activecolor="rgba(99,102,241,0.2)",
                             font=dict(color="#9ca3af", size=12),
-                            x=0, y=1.15,
+                            x=0, y=1.12,
                         ),
                     ),
-                    dragmode="zoom",
                 )
-                eq_fig.update_xaxes(
-                    rangeslider_bgcolor="rgba(255,255,255,0.02)",
-                )
-                st.plotly_chart(eq_fig, use_container_width=True,
-                                config={"scrollZoom": True})
+                st.plotly_chart(eq_fig, use_container_width=True)
 
             # ── Summary table with max drawdown ──
             summary_rows = []
