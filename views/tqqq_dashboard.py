@@ -442,6 +442,8 @@ def render():
                 fillcolor="rgba(129,140,248,0.08)",
                 hovertemplate="<b>%{x|%b %d, %Y}</b><br>$%{y:,.0f}<extra></extra>",
             ))
+            y_min = min(eq_vals_f) * 0.95 if eq_vals_f else 0
+            y_max = max(eq_vals_f) * 1.05 if eq_vals_f else 100000
             eq_fig.update_layout(
                 template="plotly_dark",
                 height=380,
@@ -450,14 +452,13 @@ def render():
                 plot_bgcolor="rgba(10,15,26,1)",
                 yaxis=dict(gridcolor="rgba(255,255,255,0.04)",
                            tickprefix="$", tickformat=",",
-                           showgrid=True, zeroline=False),
+                           showgrid=True, zeroline=False,
+                           range=[0, y_max], fixedrange=True),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            showgrid=False),
-                dragmode="zoom",
                 showlegend=False,
             )
-            st.plotly_chart(eq_fig, use_container_width=True,
-                            config={"scrollZoom": True})
+            st.plotly_chart(eq_fig, use_container_width=True)
 
         # (Last Trade + Allocation moved to top)
 
@@ -969,6 +970,7 @@ in a taxable account.""")
                     line=dict(color="#818cf8", width=2.5),
                     fill="tozeroy", fillcolor="rgba(129,140,248,0.06)",
                 ))
+                y_max2 = max(eq_vals2_f) * 1.05 if eq_vals2_f else 100000
                 eq_fig2.update_layout(
                     template="plotly_dark",
                     height=450,
@@ -978,12 +980,11 @@ in a taxable account.""")
                     yaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
+                        range=[0, y_max2], fixedrange=True,
                     ),
                     xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
-                    dragmode="zoom",
                 )
-                st.plotly_chart(eq_fig2, use_container_width=True,
-                                config={"scrollZoom": True})
+                st.plotly_chart(eq_fig2, use_container_width=True)
 
             # ── Summary table with max drawdown ──
             summary_rows = []
