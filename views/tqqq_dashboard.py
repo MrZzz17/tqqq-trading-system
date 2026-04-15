@@ -312,8 +312,8 @@ def render():
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;">
-                    <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr minmax(0, 1.5fr); gap: 10px; align-items: center;">
-                        <div style="text-align: center; padding-right: 10px;">
+                    <div style="display: grid; grid-template-columns: auto minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 2.25fr); gap: 6px; align-items: center;">
+                        <div style="text-align: center; padding-right: 6px;">
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
                                 letter-spacing: -0.02em; line-height: 1;">{main_lbl}</div>
                             <div style="font-size: 0.75em; color: #6b7280; margin-top: 4px;">As of close</div>
