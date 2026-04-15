@@ -111,10 +111,9 @@ def build_tqqq_chart(
         margin=dict(l=10, r=10, t=30, b=10),
         xaxis=dict(
             range=[x_start, x_end],
-            rangeslider=dict(visible=True, thickness=0.04),
             gridcolor=GRID_COLOR,
         ),
-        yaxis=dict(gridcolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR, autorange=True),
         yaxis2=dict(gridcolor=GRID_COLOR),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,

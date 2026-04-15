@@ -12,13 +12,13 @@ from core.data import (
     get_tqqq_data, get_qqq_data, get_nasdaq_data, get_sp500_data,
     get_52_week_high, get_current_price, get_latest_date,
 )
-from core.indicators import count_distribution_days, detect_market_regime
+from core.indicators import detect_market_regime
 from core.signals import (
     detect_follow_through_day, detect_three_white_knights,
     check_all_sell_signals, compute_alert_level,
 )
-from core.swing_tracker import detect_swings, current_swing_stats, swing_summary_stats
-from core.charts import build_tqqq_chart, build_distribution_chart
+from core.swing_tracker import detect_swings
+from core.charts import build_tqqq_chart
 from core.backtest import run_all_backtests, STARTING_CAPITAL, Trade, YearResult
 import config
 import json
@@ -128,7 +128,6 @@ def render():
         st.markdown("---")
         st.markdown("##### Settings")
         chart_lookback = st.slider("Chart lookback (days)", 30, 365, 120)
-        swing_min_pct = st.slider("Swing min % move", 3.0, 15.0, 5.0, 0.5)
         bulls_pct = st.number_input(
             "Bulls % (AAII sentiment)",
             min_value=0.0, max_value=100.0, value=0.0, step=1.0,
@@ -174,10 +173,8 @@ def render():
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
         nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
-        c3.metric("Nasdaq", f"{nq_icon} {nq_short}",
-                   delta=f"{nasdaq_regime.dist_day_count} dist days", delta_color="off")
-        c4.metric("SPY", f"{sp_icon} {sp_short}",
-                   delta=f"{sp_regime.dist_day_count} dist days", delta_color="off")
+        c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
+        c4.metric("SPY", f"{sp_icon} {sp_short}")
         st.caption(f"Data as of {data_date.strftime('%b %d, %Y')}")
 
         # Live action status
@@ -187,6 +184,27 @@ def render():
                              and qqq_close_val > float(qqq_sma200_val))
         w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
         macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
+
+        # Regime computation (needed for position sizing bar under BUY/SELL card)
+        qqq_sma50_val = qqq.iloc[-1].get("SMA_50")
+        above_200 = (qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
+                     and qqq_close_val > float(qqq_sma200_val))
+        golden = (qqq_sma50_val is not None and not pd.isna(qqq_sma50_val)
+                  and qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
+                  and float(qqq_sma50_val) > float(qqq_sma200_val))
+        if golden and above_200:
+            regime_str = "Strong Bull"
+            regime_color = "#17BF63"
+            exit_desc = "Holding through normal pullbacks. Exit on 2 closes below QQQ 50-day."
+        elif above_200:
+            regime_str = "Bull"
+            regime_color = "#FFAD1F"
+            exit_desc = "Cautious hold. Exit on 2 closes below QQQ 21-day EMA."
+        else:
+            regime_str = "Bear"
+            regime_color = "#E0245E"
+            exit_desc = "QQQ below 200-day. Stay in cash."
+        alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
 
         all_trades_flat = [t for r in bt_results for t in r.trades]
         lt = all_trades_flat[-1] if all_trades_flat else None
@@ -205,7 +223,7 @@ def render():
                 days_in = (dt.date.today() - dt.datetime.strptime(lt.entry_date, "%Y-%m-%d").date()).days
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
-                    margin: 8px 0 16px 0;">
+                    margin: 8px 0 4px 0;">
                     <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center;">
                         <div>
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
@@ -215,29 +233,29 @@ def render():
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
                             <div style="text-align: center;">
-                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">Position</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
                                 <div style="font-size: 2em; font-weight: 900; color: #818cf8;
                                     font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">Entry</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Entry</div>
                                 <div style="font-size: 1.6em; font-weight: 700; color: #f0f0f0;
                                     font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">Now</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Now</div>
                                 <div style="font-size: 1.6em; font-weight: 700; color: #f0f0f0;
                                     font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.75em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
                                 <div style="font-size: 2em; font-weight: 900; color: {unr_color};
                                     font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
                             </div>
                         </div>
                         <div style="text-align: left; border-left: 2px solid rgba(52,211,153,0.3);
                             padding-left: 16px; max-width: 280px;">
-                            <div style="font-size: 0.7em; color: #6b7280; text-transform: uppercase;
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                                 letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
                                 {'Weekly MACD crossed above zero — bullish trend confirmed.' if lt.signal_type == 'MACD' else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.' if lt.signal_type == 'FTD' else 'System defaults to invested in uptrend.')}
@@ -247,12 +265,13 @@ def render():
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
+                st.caption(f"**{regime_str}:** {exit_desc} Allocation: **{alloc_label}**")
             else:
                 act_color = "#f87171" if not qqq_above_200_now else "#fbbf24"
                 trade_pnl = lt.portfolio_after - lt.portfolio_before
                 st.markdown(f"""<div style="border: 2px solid {act_color}44; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, {act_color}08, rgba(255,255,255,0.02));
-                    margin: 8px 0 16px 0;">
+                    margin: 8px 0 4px 0;">
                     <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;">
                         <div>
                             <div style="font-size: 2.2em; font-weight: 900; color: {act_color};
@@ -262,29 +281,29 @@ def render():
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Position</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
                                 <div style="font-size: 1.5em; font-weight: 900; color: #9ca3af;
                                     font-family: 'JetBrains Mono', monospace;">0%</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Result</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Result</div>
                                 <div style="font-size: 1.5em; font-weight: 900; color: {lt_color};
                                     font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
                                 <div style="font-size: 1.2em; font-weight: 700; color: {lt_color};
                                     font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
                             </div>
                             <div style="text-align: center;">
-                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Held</div>
+                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Held</div>
                                 <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
                                     font-family: 'JetBrains Mono', monospace;">{lt.duration_days}d</div>
                             </div>
                         </div>
                         <div style="text-align: left; border-left: 1px solid rgba(255,255,255,0.06);
                             padding-left: 16px;">
-                            <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                                 letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 0.85em; color: #d1d5db; margin-top: 4px; line-height: 1.5;">
                                 {'QQQ closed below 200-day SMA for 2 consecutive days — bear market confirmed.' if not qqq_above_200_now else ('12% trailing stop triggered — portfolio dropped from peak.' if lt.return_pct < -5 else 'QQQ broke below 200-day SMA — exited to protect capital.')}</div>
@@ -293,8 +312,7 @@ def render():
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-
-        # (Last Trade + Allocation moved to top)
+                st.caption(f"**{regime_str}:** {exit_desc} Allocation: **{alloc_label}**")
 
         # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
@@ -323,7 +341,7 @@ def render():
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: center;
                     position: relative;">
                     <div style="text-align: center;">
-                        <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                             letter-spacing: 0.12em; font-weight: 500;">Return {start_year_bt} – YTD {current_year}</div>
                         <div style="font-size: 2.8em; font-weight: 900; color: #34d399;
                             letter-spacing: -0.04em; line-height: 1.1;
@@ -333,7 +351,7 @@ def render():
                     </div>
                     <div style="text-align: center; border-left: 1px solid rgba(255,255,255,0.06);
                         border-right: 1px solid rgba(255,255,255,0.06); padding: 0 16px;">
-                        <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                             letter-spacing: 0.12em; font-weight: 500;">{current_year - 1} Return</div>
                         <div style="font-size: 2.2em; font-weight: 800; color: {py_color};
                             line-height: 1.2; font-family: 'JetBrains Mono', monospace;">{py_pct:+.1f}%</div>
@@ -341,7 +359,7 @@ def render():
                             vs B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                             letter-spacing: 0.12em; font-weight: 500;">{current_year} YTD</div>
                         <div style="font-size: 2.2em; font-weight: 800; color: {ytd_color};
                             line-height: 1.2; font-family: 'JetBrains Mono', monospace;">{ytd_pct:+.1f}%</div>
@@ -402,12 +420,22 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # Equity chart — use range slider for zoom (Y auto-fits with slider)
             eq_dates = sorted(bt_equity.keys())
             eq_vals = [bt_equity[d] for d in eq_dates]
+
+            eq_range = st.radio("Period", ["1Y", "3Y", "5Y", "All"],
+                                index=3, horizontal=True, key="eq_range_main")
+            if eq_range != "All":
+                years_back = int(eq_range[0])
+                cutoff = dt.date.today() - dt.timedelta(days=years_back * 365)
+                eq_dates_f = [d for d in eq_dates if d >= cutoff]
+                eq_vals_f = [bt_equity[d] for d in eq_dates_f]
+            else:
+                eq_dates_f, eq_vals_f = eq_dates, eq_vals
+
             eq_fig = go.Figure()
             eq_fig.add_trace(go.Scatter(
-                x=eq_dates, y=eq_vals,
+                x=eq_dates_f, y=eq_vals_f,
                 mode="lines",
                 line=dict(color="#818cf8", width=2.5),
                 fill="tozeroy",
@@ -424,24 +452,12 @@ def render():
                            tickprefix="$", tickformat=",",
                            showgrid=True, zeroline=False),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
-                           showgrid=False,
-                           rangeslider=dict(visible=True, thickness=0.08),
-                           rangeselector=dict(
-                               buttons=[
-                                   dict(count=1, label="1Y", step="year", stepmode="backward"),
-                                   dict(count=3, label="3Y", step="year", stepmode="backward"),
-                                   dict(count=5, label="5Y", step="year", stepmode="backward"),
-                                   dict(step="all", label="All"),
-                               ],
-                               bgcolor="rgba(255,255,255,0.03)",
-                               activecolor="rgba(99,102,241,0.2)",
-                               font=dict(color="#9ca3af", size=11),
-                               x=0, y=1.05,
-                           )),
+                           showgrid=False),
+                dragmode="zoom",
                 showlegend=False,
             )
             st.plotly_chart(eq_fig, use_container_width=True,
-                            config={"displayModeBar": False})
+                            config={"scrollZoom": True})
 
         # (Last Trade + Allocation moved to top)
 
@@ -474,7 +490,7 @@ def render():
             dd = ((current - peak) / peak) * 100
             return dd, peak
 
-        def _health_card(ticker, df, dist_days_count):
+        def _health_card(ticker, df):
             price = float(df.iloc[-1]["Close"])
             cross_label, cross_color = _cross_status(df)
             dd_pct, peak = _drawdown_from_peak(df)
@@ -523,42 +539,18 @@ def render():
                     </div>
                 </div>
                 <div style="margin-top: 10px; font-size: 0.78em; color: #8899A6;">
-                    Dist. days: <b style="color: {'#E0245E' if dist_days_count >= 4 else '#FFAD1F' if dist_days_count >= 3 else '#17BF63'}">{dist_days_count}</b>/25 sessions
-                    &nbsp;·&nbsp; 52w high: ${peak:.2f}
+                    52w high: ${peak:.2f}
                 </div>
             </div>""", unsafe_allow_html=True)
 
-        # Weekly MACD + Regime indicator
+        # Weekly MACD detail for health grid
         w_macd = qqq.iloc[-1].get("Weekly_MACD")
         w_macd_sig = qqq.iloc[-1].get("Weekly_MACD_Signal")
         macd_val = float(w_macd) if w_macd is not None and not pd.isna(w_macd) else None
         macd_sig_val = float(w_macd_sig) if w_macd_sig is not None and not pd.isna(w_macd_sig) else None
 
-        qqq_sma200 = qqq.iloc[-1].get("SMA_200")
-        qqq_sma50 = qqq.iloc[-1].get("SMA_50")
-        qqq_close = float(qqq.iloc[-1]["Close"])
-
-        above_200 = (qqq_sma200 is not None and not pd.isna(qqq_sma200)
-                     and qqq_close > float(qqq_sma200))
-        golden = (qqq_sma50 is not None and not pd.isna(qqq_sma50)
-                  and qqq_sma200 is not None and not pd.isna(qqq_sma200)
-                  and float(qqq_sma50) > float(qqq_sma200))
-
-        if golden and above_200:
-            regime_str = "Strong Bull"
-            regime_color = "#17BF63"
-            exit_mode = "Wide exit (QQQ 50-day SMA)"
-            exit_desc = "Holding through normal pullbacks. Exit on 2 closes below QQQ 50-day."
-        elif above_200:
-            regime_str = "Bull"
-            regime_color = "#FFAD1F"
-            exit_mode = "Tight exit (QQQ 21-EMA)"
-            exit_desc = "Cautious hold. Exit on 2 closes below QQQ 21-day EMA."
-        else:
-            regime_str = "Bear"
-            regime_color = "#E0245E"
-            exit_mode = "No positions"
-            exit_desc = "QQQ below 200-day. Stay in cash."
+        exit_mode = ("Wide exit (QQQ 50-day SMA)" if (golden and above_200)
+                     else ("Tight exit (QQQ 21-EMA)" if above_200 else "No positions"))
 
         macd_color = "#17BF63" if (macd_val and macd_val > 0) else "#E0245E"
         macd_label = "Bullish" if (macd_val and macd_val > 0) else "Bearish"
@@ -585,20 +577,10 @@ def render():
         </div>""", unsafe_allow_html=True)
 
         hc1, hc2 = st.columns(2)
-        qqq_dist = count_distribution_days(qqq)
-        sp_dist = count_distribution_days(sp500)
         with hc1:
-            _health_card("QQQ", qqq, len(qqq_dist))
+            _health_card("QQQ", qqq)
         with hc2:
-            _health_card("SPY", sp500, len(sp_dist))
-
-        # Position sizing guidance based on market health
-        alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
-        st.markdown(f"""<div style="background: {regime_color}08; border: 1px solid {regime_color}22;
-            border-left: 4px solid {regime_color}; border-radius: 10px;
-            padding: 14px 18px; margin: 12px 0 20px 0; font-size: 0.9em; color: #E7E9EA;">
-            <b>Position Sizing ({regime_str}):</b> {exit_desc} Allocation: <b>{alloc_label}</b>
-        </div>""", unsafe_allow_html=True)
+            _health_card("SPY", sp500)
 
         # ── System Signals (what actually drives decisions) ──
         st.markdown("### System Signals")
@@ -732,7 +714,7 @@ def render():
         # Chart
         st.markdown("### TQQQ Price Chart")
         year_now = dt.datetime.now().year
-        swings = detect_swings(tqqq, min_move_pct=swing_min_pct, year_filter=year_now - 1)
+        swings = detect_swings(tqqq, min_move_pct=5.0, year_filter=year_now - 1)
         fig = build_tqqq_chart(tqqq, swings=swings, lookback_days=chart_lookback)
         st.plotly_chart(fig, key="main_chart", use_container_width=True,
                         config={"scrollZoom": True})
@@ -750,52 +732,7 @@ def render():
             st.markdown("##### Moving Average Positioning")
             st.dataframe(pd.DataFrame(ma_rows), use_container_width=True, hide_index=True)
 
-        # Swing Tracker
-        st.markdown("### Swing Tracker")
-        all_swings = detect_swings(tqqq, min_move_pct=swing_min_pct)
-        ytd_swings = detect_swings(tqqq, min_move_pct=swing_min_pct, year_filter=year_now)
 
-        current = current_swing_stats(tqqq, all_swings)
-        if "label" in current:
-            icon = "📈" if current.get("direction") == "up" else "📉"
-            st.info(f"{icon} {current['label']}")
-
-        summary = swing_summary_stats(all_swings)
-        if summary:
-            m1, m2, m3, m4, m5 = st.columns(5)
-            m1.metric("Swings (2yr)", summary["total_swings"])
-            m2.metric("Avg Rally", f"{summary['avg_up_move']:+.1f}%")
-            m3.metric("Avg Pullback", f"{summary['avg_down_move']:.1f}%")
-            m4.metric("Best Rally", f"{summary['max_up_move']:+.1f}%")
-            m5.metric("Avg Duration", f"{summary['avg_duration_days']:.0f}d")
-
-        stab1, stab2 = st.tabs([f"{year_now} YTD", "All Swings (2yr)"])
-        for tab, swing_list in [(stab1, ytd_swings), (stab2, all_swings)]:
-            with tab:
-                if swing_list:
-                    rows = [{"Date": s.date.strftime("%Y-%m-%d"), "Type": s.point_type.title(),
-                             "Price": f"${s.price:.2f}", "Move": f"{s.pct_move:+.1f}%",
-                             "Days": s.trading_days, "vs 50d": s.vs_sma_50.title(),
-                             "vs 21d": s.vs_ema_21.title()} for s in swing_list]
-                    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-                else:
-                    st.info("No swings detected with current sensitivity.")
-
-        # Distribution Days
-        st.markdown("### Distribution Days")
-        dc1, dc2 = st.columns(2)
-        for col_widget, title, df_data in [(dc1, "Nasdaq Composite", nasdaq), (dc2, "SPY", sp500)]:
-            with col_widget:
-                st.markdown(f"##### {title}")
-                dist = count_distribution_days(df_data)
-                fig_d = build_distribution_chart(df_data, dist)
-                st.plotly_chart(fig_d, use_container_width=True)
-                if dist:
-                    rows = [{"Date": d.date.strftime("%Y-%m-%d"), "Decline": f"{d.pct_change:.2f}%",
-                             "Vol Ratio": f"{d.volume_vs_prior:.2f}x"} for d in dist]
-                    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-                else:
-                    st.success("No distribution days in last 25 sessions.")
 
     # ══════════════════════════════════════════════════════════════
     # TAB 2: HOW THE SYSTEM WORKS
@@ -982,15 +919,11 @@ in a taxable account.""")
 | **Sell Scoreboard** | Which specific sell rules are triggered | Trim 10% per triggered signal |
 | **Price Chart** | TQQQ with moving averages and swing points | Visual confirmation of signals |
 | **MA Table** | Distance from each key moving average | Below 21-EMA is danger zone |
-| **Swing Tracker** | Historical peak/trough data with % moves | Context for current position |
-| **Distribution Days** | Institutional selling pressure | 4+ days = elevated caution |
 """)
 
         st.markdown("### Sidebar Controls")
         st.markdown("""
 - **Chart lookback** — How many days of price history to display (30-365)
-- **Swing min % move** — Sensitivity for peak/trough detection. Lower = more swings detected.
-  Default 5% works well for TQQQ.
 - **Bulls %** — Manually enter the latest AAII bullish sentiment percentage. When bulls
   exceed 60%, it triggers sell rule #8 as a secondary caution signal.
 - **Refresh Data** — Force a fresh fetch from Yahoo Finance (data caches for 4 hours)
@@ -1013,49 +946,43 @@ in a taxable account.""")
             # ── Equity Curve Chart ──
             if bt_equity:
                 import plotly.graph_objects as go
-                eq_dates = sorted(bt_equity.keys())
-                eq_vals = [bt_equity[d] for d in eq_dates]
+                eq_dates2 = sorted(bt_equity.keys())
+                eq_vals2 = [bt_equity[d] for d in eq_dates2]
 
-                eq_fig = go.Figure()
-                eq_fig.add_trace(go.Scatter(
-                    x=eq_dates, y=eq_vals,
+                st.markdown("#### Equity Curve — Cumulative Portfolio Value")
+                eq_range2 = st.radio("Period", ["3M", "6M", "1Y", "3Y", "5Y", "All"],
+                                     index=5, horizontal=True, key="eq_range_hist")
+                if eq_range2 != "All":
+                    num = int(eq_range2[:-1])
+                    unit = eq_range2[-1]
+                    days_back = num * 30 if unit == "M" else num * 365
+                    cutoff2 = dt.date.today() - dt.timedelta(days=days_back)
+                    eq_dates2_f = [d for d in eq_dates2 if d >= cutoff2]
+                    eq_vals2_f = [bt_equity[d] for d in eq_dates2_f]
+                else:
+                    eq_dates2_f, eq_vals2_f = eq_dates2, eq_vals2
+
+                eq_fig2 = go.Figure()
+                eq_fig2.add_trace(go.Scatter(
+                    x=eq_dates2_f, y=eq_vals2_f,
                     mode="lines", name="Strategy",
                     line=dict(color="#818cf8", width=2.5),
                     fill="tozeroy", fillcolor="rgba(129,140,248,0.06)",
                 ))
-                eq_fig.update_layout(
+                eq_fig2.update_layout(
                     template="plotly_dark",
                     height=450,
-                    margin=dict(l=10, r=10, t=60, b=10),
-                    title=dict(text="Equity Curve — Cumulative Portfolio Value",
-                               font=dict(size=16, color="#f0f0f0"),
-                               y=0.97, x=0.5, xanchor="center"),
+                    margin=dict(l=10, r=10, t=10, b=10),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(10,15,26,1)",
                     yaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
                     ),
-                    xaxis=dict(
-                        gridcolor="rgba(255,255,255,0.04)",
-                        rangeslider=dict(visible=True, thickness=0.06),
-                        rangeselector=dict(
-                            buttons=[
-                                dict(count=3, label="3M", step="month", stepmode="backward"),
-                                dict(count=6, label="6M", step="month", stepmode="backward"),
-                                dict(count=1, label="1Y", step="year", stepmode="backward"),
-                                dict(count=3, label="3Y", step="year", stepmode="backward"),
-                                dict(count=5, label="5Y", step="year", stepmode="backward"),
-                                dict(step="all", label="All"),
-                            ],
-                            bgcolor="rgba(255,255,255,0.03)",
-                            activecolor="rgba(99,102,241,0.2)",
-                            font=dict(color="#9ca3af", size=12),
-                            x=0, y=1.12,
-                        ),
-                    ),
+                    xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
+                    dragmode="zoom",
                 )
-                st.plotly_chart(eq_fig, use_container_width=True,
+                st.plotly_chart(eq_fig2, use_container_width=True,
                                 config={"scrollZoom": True})
 
             # ── Summary table with max drawdown ──
