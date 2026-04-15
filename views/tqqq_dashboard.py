@@ -359,11 +359,15 @@ def render():
             total_trades = sum(r.num_trades for r in bt_results)
             overall_wr = sum(r.win_rate_pct * r.num_trades for r in bt_results if r.num_trades > 0) / max(total_trades, 1)
             total_max_dd = 0.0
+            max_dd_date = None
             pk = list(bt_equity.values())[0]
-            for v in bt_equity.values():
+            for d_eq, v in sorted(bt_equity.items()):
                 if v > pk: pk = v
                 dd = ((v - pk) / pk) * 100
-                if dd < total_max_dd: total_max_dd = dd
+                if dd < total_max_dd:
+                    total_max_dd = dd
+                    max_dd_date = d_eq
+            max_dd_label = max_dd_date.strftime("%b'%y") if max_dd_date else ""
 
             # Stats row ABOVE the chart
             st.markdown(f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
@@ -388,6 +392,7 @@ def render():
                         letter-spacing: 0.08em;">Max Drawdown</div>
                     <div style="font-size: 1.4em; font-weight: 800; color: #f87171;
                         font-family: 'JetBrains Mono', monospace;">{total_max_dd:.1f}%</div>
+                    <div style="font-size: 0.72em; color: #6b7280; margin-top: 2px;">{max_dd_label}</div>
                 </div>
                 <div style="text-align: center; padding: 12px; border: 1px solid rgba(255,255,255,0.06);
                     border-radius: 12px; background: rgba(255,255,255,0.02);">
