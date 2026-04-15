@@ -117,12 +117,14 @@ def build_tqqq_chart(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(10,15,26,1)",
     )
+    # Collapse Sat–Sun on the time axis so Fri connects to Mon (daily bars are weekdays only)
     fig.update_xaxes(
         range=[x_start, x_end],
         showgrid=False,
         gridcolor="rgba(255,255,255,0.03)",
         fixedrange=True,
         zeroline=False,
+        rangebreaks=[dict(bounds=["sat", "mon"])],
     )
     fig.update_yaxes(
         showgrid=True,
