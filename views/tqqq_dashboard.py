@@ -579,8 +579,8 @@ def render():
             </div>
             <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 14px;
                 background: rgba(29,161,242,0.03); text-align: center;">
-                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Exit Strategy</div>
-                <div style="font-size: 0.85em; font-weight: 600; color: #E7E9EA; margin-top: 6px;">{exit_desc}</div>
+                <div style="font-size: 0.82em; color: #8899A6; text-transform: uppercase;">Exit Strategy</div>
+                <div style="font-size: 1.1em; font-weight: 600; color: #E7E9EA; margin-top: 6px;">{exit_desc}</div>
             </div>
         </div>""", unsafe_allow_html=True)
 
