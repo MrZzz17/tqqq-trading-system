@@ -765,11 +765,14 @@ def render():
         macd_label = "Bullish" if (macd_val and macd_val > 0) else "Bearish"
         macd_trend = "Rising" if (macd_val and macd_sig_val and macd_val > macd_sig_val) else "Falling"
 
+        # Tile accent — keyed by regime_str only (avoids NameError if regime_color ever missing)
+        _tile_rc = {"Strong Bull": "#17BF63", "Bull": "#FFAD1F", "Bear": "#E0245E"}.get(regime_str, "#657786")
+
         st.markdown(f"""<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-            <div style="border: 1px solid {regime_color}33; border-radius: 12px; padding: 14px;
-                background: {regime_color}08; text-align: center;">
+            <div style="border: 1px solid {_tile_rc}33; border-radius: 12px; padding: 14px;
+                background: {_tile_rc}08; text-align: center;">
                 <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Market Regime</div>
-                <div style="font-size: 1.4em; font-weight: 800; color: {regime_color};">{regime_str}</div>
+                <div style="font-size: 1.4em; font-weight: 800; color: {_tile_rc};">{regime_str}</div>
                 <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{exit_mode}</div>
             </div>
             <div style="border: 1px solid {macd_color}33; border-radius: 12px; padding: 14px;
