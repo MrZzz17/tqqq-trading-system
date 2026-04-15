@@ -221,98 +221,107 @@ def render():
 
             if trade_is_open:
                 days_in = (dt.date.today() - dt.datetime.strptime(lt.entry_date, "%Y-%m-%d").date()).days
+                why_text = ('Weekly MACD crossed above zero — bullish trend confirmed.'
+                            if lt.signal_type == 'MACD'
+                            else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.'
+                                  if lt.signal_type == 'FTD'
+                                  else 'System defaults to invested in uptrend.'))
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
-                    margin: 8px 0 4px 0;">
-                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center;">
-                        <div>
+                    margin: 8px 0 16px 0;">
+                    <div style="display: grid; grid-template-columns: auto auto auto auto auto 2fr; gap: 10px; align-items: center;">
+                        <div style="text-align: center; padding-right: 10px;">
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
                                 letter-spacing: -0.02em; line-height: 1;">BUY</div>
-                            <div style="font-size: 1.3em; font-weight: 700; color: #f0f0f0;
+                            <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">{lt.entry_date}</div>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
-                                <div style="font-size: 2em; font-weight: 900; color: #818cf8;
-                                    font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Entry</div>
-                                <div style="font-size: 1.6em; font-weight: 700; color: #f0f0f0;
-                                    font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Now</div>
-                                <div style="font-size: 1.6em; font-weight: 700; color: #f0f0f0;
-                                    font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
-                                <div style="font-size: 2em; font-weight: 900; color: {unr_color};
-                                    font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
-                            </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
+                            <div style="font-size: 1.8em; font-weight: 900; color: #818cf8;
+                                font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
                         </div>
-                        <div style="text-align: left; border-left: 2px solid rgba(52,211,153,0.3);
-                            padding-left: 16px; max-width: 280px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Entry</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: #f0f0f0;
+                                font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Now</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: #f0f0f0;
+                                font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                            <div style="font-size: 1.8em; font-weight: 900; color: {unr_color};
+                                font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
+                        </div>
+                        <div style="border-left: 2px solid rgba(52,211,153,0.3);
+                            padding-left: 16px;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                                 letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
-                                {'Weekly MACD crossed above zero — bullish trend confirmed.' if lt.signal_type == 'MACD' else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.' if lt.signal_type == 'FTD' else 'System defaults to invested in uptrend.')}
-                                <br>QQQ above 200-day SMA.</div>
+                                {why_text} QQQ above 200-day SMA.</div>
+                            <div style="font-size: 0.88em; color: #d1d5db; margin-top: 8px; line-height: 1.5;">
+                                <b style="color: {regime_color};">{regime_str}:</b> {exit_desc} Allocation: <b>{alloc_label}</b></div>
                             <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
                                 {days_in} days · {lt.shares:,.0f} shares</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-                st.caption(f"**{regime_str}:** {exit_desc} Allocation: **{alloc_label}**")
             else:
                 act_color = "#f87171" if not qqq_above_200_now else "#fbbf24"
                 trade_pnl = lt.portfolio_after - lt.portfolio_before
+                sell_why = ('QQQ closed below 200-day SMA for 2 consecutive days — bear market confirmed.'
+                            if not qqq_above_200_now
+                            else ('12% trailing stop triggered — portfolio dropped from peak.'
+                                  if lt.return_pct < -5
+                                  else 'QQQ broke below 200-day SMA — exited to protect capital.'))
+                sell_next = ('Watching for re-entry signal' if qqq_above_200_now
+                             else 'Staying in cash until QQQ reclaims 200-day')
                 st.markdown(f"""<div style="border: 2px solid {act_color}44; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, {act_color}08, rgba(255,255,255,0.02));
-                    margin: 8px 0 4px 0;">
-                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;">
-                        <div>
-                            <div style="font-size: 2.2em; font-weight: 900; color: {act_color};
-                                letter-spacing: -0.02em;">SELL</div>
+                    margin: 8px 0 16px 0;">
+                    <div style="display: grid; grid-template-columns: auto auto auto auto auto 2fr; gap: 10px; align-items: center;">
+                        <div style="text-align: center; padding-right: 10px;">
+                            <div style="font-size: 2.8em; font-weight: 900; color: {act_color};
+                                letter-spacing: -0.02em; line-height: 1;">SELL</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">{lt.exit_date}</div>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
-                                <div style="font-size: 1.5em; font-weight: 900; color: #9ca3af;
-                                    font-family: 'JetBrains Mono', monospace;">0%</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Result</div>
-                                <div style="font-size: 1.5em; font-weight: 900; color: {lt_color};
-                                    font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
-                                <div style="font-size: 1.2em; font-weight: 700; color: {lt_color};
-                                    font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Held</div>
-                                <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
-                                    font-family: 'JetBrains Mono', monospace;">{lt.duration_days}d</div>
-                            </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
+                            <div style="font-size: 1.5em; font-weight: 900; color: #9ca3af;
+                                font-family: 'JetBrains Mono', monospace;">0%</div>
                         </div>
-                        <div style="text-align: left; border-left: 1px solid rgba(255,255,255,0.06);
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Result</div>
+                            <div style="font-size: 1.4em; font-weight: 900; color: {lt_color};
+                                font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: {lt_color};
+                                font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Held</div>
+                            <div style="font-size: 1.4em; font-weight: 700; color: #f0f0f0;
+                                font-family: 'JetBrains Mono', monospace;">{lt.duration_days}d</div>
+                        </div>
+                        <div style="border-left: 2px solid {act_color}44;
                             padding-left: 16px;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                                 letter-spacing: 0.08em;">Why</div>
-                            <div style="font-size: 0.85em; color: #d1d5db; margin-top: 4px; line-height: 1.5;">
-                                {'QQQ closed below 200-day SMA for 2 consecutive days — bear market confirmed.' if not qqq_above_200_now else ('12% trailing stop triggered — portfolio dropped from peak.' if lt.return_pct < -5 else 'QQQ broke below 200-day SMA — exited to protect capital.')}</div>
-                            <div style="font-size: 0.72em; color: #6b7280; margin-top: 4px;">
-                                {'Watching for re-entry signal' if qqq_above_200_now else 'Staying in cash until QQQ reclaims 200-day'}</div>
+                            <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
+                                {sell_why}</div>
+                            <div style="font-size: 0.88em; color: #d1d5db; margin-top: 8px; line-height: 1.5;">
+                                <b style="color: {regime_color};">{regime_str}:</b> {exit_desc} Allocation: <b>{alloc_label}</b></div>
+                            <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
+                                {sell_next}</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-                st.caption(f"**{regime_str}:** {exit_desc} Allocation: **{alloc_label}**")
 
         # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
