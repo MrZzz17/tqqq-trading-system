@@ -251,8 +251,8 @@ def render():
             col, bg = ("#34d399", "rgba(52,211,153,0.14)") if up else ("#f87171", "rgba(248,113,113,0.14)")
             ar = "↑" if up else "↓"
             return (
-                f'<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:0.82em;'
-                f'font-weight:600;background:{bg};color:{col};">{ar} {v:+.2f}%</span>'
+                f'<span style="display:inline-block;flex-shrink:0;padding:3px 10px;border-radius:999px;'
+                f'font-size:0.82em;font-weight:600;background:{bg};color:{col};">{ar} {v:+.2f}%</span>'
             )
 
         _mc = (
@@ -264,18 +264,29 @@ def render():
             "flex:1;display:flex;align-items:center;min-height:0;font-size:1.65em;font-weight:700;"
             "color:#f0f0f0;font-family:'JetBrains Mono',monospace;"
         )
+        _mrow_px = (
+            "flex:1;display:flex;flex-direction:row;align-items:center;justify-content:space-between;"
+            "gap:10px;min-height:0;flex-wrap:nowrap;"
+        )
+        _mpx = "font-size:1.65em;font-weight:700;color:#f0f0f0;font-family:'JetBrains Mono',monospace;"
         _mf = "min-height:36px;display:flex;align-items:flex-end;flex-shrink:0;"
         st.markdown(f"""
 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:2px;">
   <div style="{_mc}">
     <div style="{_ml}">TQQQ</div>
-    <div style="{_mv}">${_tqqq_show:.2f}</div>
-    <div style="{_mf}">{_pct_pill(tqqq_delta)}</div>
+    <div style="{_mrow_px}">
+      <div style="{_mpx}">${_tqqq_show:.2f}</div>
+      {_pct_pill(tqqq_delta)}
+    </div>
+    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">QQQ</div>
-    <div style="{_mv}">${qqq_price:.2f}</div>
-    <div style="{_mf}">{_pct_pill(qqq_delta)}</div>
+    <div style="{_mrow_px}">
+      <div style="{_mpx}">${qqq_price:.2f}</div>
+      {_pct_pill(qqq_delta)}
+    </div>
+    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">Nasdaq</div>
