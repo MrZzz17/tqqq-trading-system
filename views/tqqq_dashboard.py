@@ -251,52 +251,48 @@ def render():
             col, bg = ("#34d399", "rgba(52,211,153,0.14)") if up else ("#f87171", "rgba(248,113,113,0.14)")
             ar = "↑" if up else "↓"
             return (
-                f'<span style="display:inline-block;flex-shrink:0;padding:3px 10px;border-radius:999px;'
-                f'font-size:0.82em;font-weight:600;background:{bg};color:{col};">{ar} {v:+.2f}%</span>'
+                f'<span style="display:inline-block;flex-shrink:0;padding:4px 12px;border-radius:999px;'
+                f'font-size:0.95em;font-weight:600;background:{bg};color:{col};">{ar} {v:+.2f}%</span>'
             )
 
         _mc = (
-            "min-height:122px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;"
-            "padding:12px 14px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;"
+            "min-height:148px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;"
+            "padding:14px 12px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;"
+            "align-items:center;justify-content:center;text-align:center;box-sizing:border-box;"
         )
-        _ml = "font-size:0.78em;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;"
-        _mv = (
-            "flex:1;display:flex;align-items:center;min-height:0;font-size:1.65em;font-weight:700;"
-            "color:#f0f0f0;font-family:'JetBrains Mono',monospace;"
+        _ml = "font-size:0.95em;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;"
+        _mval = (
+            "font-size:2.05em;font-weight:800;color:#f0f0f0;font-family:'JetBrains Mono',monospace;"
+            "line-height:1.15;"
         )
+        _mreg = "font-size:1.95em;font-weight:800;color:#f0f0f0;line-height:1.2;"
         _mrow_px = (
-            "flex:1;display:flex;flex-direction:row;align-items:center;justify-content:space-between;"
-            "gap:10px;min-height:0;flex-wrap:nowrap;"
+            "display:flex;flex-direction:row;align-items:center;justify-content:center;"
+            "gap:14px;margin-top:10px;flex-wrap:wrap;width:100%;"
         )
-        _mpx = "font-size:1.65em;font-weight:700;color:#f0f0f0;font-family:'JetBrains Mono',monospace;"
-        _mf = "min-height:36px;display:flex;align-items:flex-end;flex-shrink:0;"
         st.markdown(f"""
 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:2px;">
   <div style="{_mc}">
     <div style="{_ml}">TQQQ</div>
     <div style="{_mrow_px}">
-      <div style="{_mpx}">${_tqqq_show:.2f}</div>
+      <div style="{_mval}">${_tqqq_show:.2f}</div>
       {_pct_pill(tqqq_delta)}
     </div>
-    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">QQQ</div>
     <div style="{_mrow_px}">
-      <div style="{_mpx}">${qqq_price:.2f}</div>
+      <div style="{_mval}">${qqq_price:.2f}</div>
       {_pct_pill(qqq_delta)}
     </div>
-    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">Nasdaq</div>
-    <div style="{_mv}"><span style="font-family:inherit;">{nq_icon} {nq_short}</span></div>
-    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
+    <div style="{_mreg};margin-top:10px;"><span style="font-family:inherit;">{nq_icon} {nq_short}</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">SPY</div>
-    <div style="{_mv}"><span style="font-family:inherit;">{sp_icon} {sp_short}</span></div>
-    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
+    <div style="{_mreg};margin-top:10px;"><span style="font-family:inherit;">{sp_icon} {sp_short}</span></div>
   </div>
 </div>
 """, unsafe_allow_html=True)
