@@ -4,9 +4,58 @@ Rules-based TQQQ buy/sell signal system.
 """
 
 import datetime as dt
+from typing import List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
+
+# Yahoo Finance–style equity chart ranges (daily backtest series)
+EQUITY_PERIOD_OPTIONS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "3Y", "5Y", "All"]
+
+
+def _equity_cutoff_date(period: str, last_d: dt.date, first_d: dt.date) -> Optional[dt.date]:
+    """Return first calendar date to show for this period, or None for full history."""
+    if period == "All":
+        return None
+    today = dt.date.today()
+    cy = today.year
+    if period == "1D":
+        return last_d - dt.timedelta(days=14)
+    if period == "5D":
+        return last_d - dt.timedelta(days=21)
+    if period == "1M":
+        return last_d - dt.timedelta(days=35)
+    if period == "6M":
+        return last_d - dt.timedelta(days=190)
+    if period == "YTD":
+        return max(dt.date(cy, 1, 1), first_d)
+    if period == "1Y":
+        return last_d - dt.timedelta(days=372)
+    if period == "3Y":
+        return last_d - dt.timedelta(days=3 * 372)
+    if period == "5Y":
+        return last_d - dt.timedelta(days=5 * 372)
+    return first_d
+
+
+def _filter_equity_series(bt_equity: dict, period: str) -> Tuple[List, List[float]]:
+    """Sorted dates and values for the selected period (falls back if slice is empty)."""
+    eq_dates = sorted(bt_equity.keys())
+    eq_vals = [float(bt_equity[d]) for d in eq_dates]
+    if not eq_dates:
+        return [], []
+    last_d = pd.Timestamp(eq_dates[-1]).date()
+    first_d = pd.Timestamp(eq_dates[0]).date()
+    cutoff = _equity_cutoff_date(period, last_d, first_d)
+    if cutoff is None:
+        return eq_dates, eq_vals
+    eq_dates_f = [d for d in eq_dates if pd.Timestamp(d).date() >= cutoff]
+    eq_vals_f = [float(bt_equity[d]) for d in eq_dates_f]
+    if not eq_dates_f:
+        n = min(60, len(eq_dates))
+        eq_dates_f = eq_dates[-n:]
+        eq_vals_f = [float(bt_equity[d]) for d in eq_dates_f]
+    return eq_dates_f, eq_vals_f
 
 from core.data import (
     get_tqqq_data, get_qqq_data, get_nasdaq_data, get_sp500_data,
@@ -429,18 +478,13 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            eq_dates = sorted(bt_equity.keys())
-            eq_vals = [bt_equity[d] for d in eq_dates]
-
-            eq_range = st.radio("Period", ["1Y", "3Y", "5Y", "All"],
-                                index=3, horizontal=True, key="eq_range_main")
-            if eq_range != "All":
-                years_back = int(eq_range[0])
-                cutoff = dt.date.today() - dt.timedelta(days=years_back * 365)
-                eq_dates_f = [d for d in eq_dates if d >= cutoff]
-                eq_vals_f = [bt_equity[d] for d in eq_dates_f]
-            else:
-                eq_dates_f, eq_vals_f = eq_dates, eq_vals
+            eq_period = st.segmented_control(
+                "Period",
+                options=EQUITY_PERIOD_OPTIONS,
+                default="All",
+                key="eq_range_main",
+            ) or "All"
+            eq_dates_f, eq_vals_f = _filter_equity_series(bt_equity, eq_period)
 
             eq_fig = go.Figure()
             eq_fig.add_trace(go.Scatter(
@@ -451,6 +495,9 @@ def render():
             ))
             y_min = min(eq_vals_f) * 0.95 if eq_vals_f else 0
             y_max = max(eq_vals_f) * 1.05 if eq_vals_f else 100000
+            if eq_vals_f and (y_max - y_min) < max(abs(y_max) * 1e-9, 1.0):
+                pad = max(abs(y_max) * 0.02, 1000.0)
+                y_min, y_max = y_min - pad, y_max + pad
             eq_fig.update_layout(
                 template="plotly_dark",
                 height=380,
@@ -962,21 +1009,15 @@ in a taxable account.""")
             # ── Equity Curve Chart ──
             if bt_equity:
                 import plotly.graph_objects as go
-                eq_dates2 = sorted(bt_equity.keys())
-                eq_vals2 = [bt_equity[d] for d in eq_dates2]
 
                 st.markdown("#### Equity Curve — Cumulative Portfolio Value")
-                eq_range2 = st.radio("Period", ["3M", "6M", "1Y", "3Y", "5Y", "All"],
-                                     index=5, horizontal=True, key="eq_range_hist")
-                if eq_range2 != "All":
-                    num = int(eq_range2[:-1])
-                    unit = eq_range2[-1]
-                    days_back = num * 30 if unit == "M" else num * 365
-                    cutoff2 = dt.date.today() - dt.timedelta(days=days_back)
-                    eq_dates2_f = [d for d in eq_dates2 if d >= cutoff2]
-                    eq_vals2_f = [bt_equity[d] for d in eq_dates2_f]
-                else:
-                    eq_dates2_f, eq_vals2_f = eq_dates2, eq_vals2
+                eq_period2 = st.segmented_control(
+                    "Period",
+                    options=EQUITY_PERIOD_OPTIONS,
+                    default="All",
+                    key="eq_range_hist",
+                ) or "All"
+                eq_dates2_f, eq_vals2_f = _filter_equity_series(bt_equity, eq_period2)
 
                 eq_fig2 = go.Figure()
                 eq_fig2.add_trace(go.Scatter(
@@ -986,6 +1027,9 @@ in a taxable account.""")
                 ))
                 y_min2 = min(eq_vals2_f) * 0.95 if eq_vals2_f else 0
                 y_max2 = max(eq_vals2_f) * 1.05 if eq_vals2_f else 100000
+                if eq_vals2_f and (y_max2 - y_min2) < max(abs(y_max2) * 1e-9, 1.0):
+                    pad2 = max(abs(y_max2) * 0.02, 1000.0)
+                    y_min2, y_max2 = y_min2 - pad2, y_max2 + pad2
                 eq_fig2.update_layout(
                     template="plotly_dark",
                     height=450,
