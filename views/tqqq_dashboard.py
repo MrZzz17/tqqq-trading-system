@@ -629,7 +629,7 @@ def render():
             above_bg = "#34d39922" if above_200 else "#f8717122"
             above_border = "#34d39944" if above_200 else "#f8717144"
             above_badge = "ABOVE" if above_200 else "BELOW"
-            sma200_val = float(qqq_sma200) if qqq_sma200 is not None and not pd.isna(qqq_sma200) else 0
+            sma200_val = float(qqq_sma200_val) if qqq_sma200_val is not None and not pd.isna(qqq_sma200_val) else 0
             pct_from_200 = ((qqq_close_val - sma200_val) / sma200_val * 100) if sma200_val > 0 else 0
             above_desc = f"QQQ at ${qqq_close_val:.2f}, {pct_from_200:+.1f}% from 200-day (${sma200_val:.2f}). {'Bull market — entries allowed.' if above_200 else 'Bear market — cash only (except FTD).'}"
             st.markdown(f"""<div style="border: 1px solid {above_border}; background: {above_bg};
