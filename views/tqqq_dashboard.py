@@ -251,11 +251,15 @@ def render():
         c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
         c4.metric("SPY", f"{sp_icon} {sp_short}")
         _loaded_et = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M %p ET")
+        _today_et = dt.datetime.now(ZoneInfo("America/New_York")).date()
         if live:
-            _bar_d = dt.datetime.strptime(live.as_of_date, "%Y-%m-%d").date().strftime("%b %d, %Y")
+            _bar_date = dt.datetime.strptime(live.as_of_date, "%Y-%m-%d").date()
+            _bar_d = _bar_date.strftime("%b %d, %Y")
+            # Yahoo 1d "Close" for today is last trade until the session ends — not final 4pm close yet.
+            _cap_mid = f"{_bar_d} · Yahoo bar (not final)" if _bar_date == _today_et else f"{_bar_d} · Yahoo close"
         else:
-            _bar_d = data_date.strftime("%b %d, %Y")
-        st.caption(f"{_bar_d} close · loaded {_loaded_et}")
+            _cap_mid = f"{data_date.strftime('%b %d, %Y')} · Yahoo daily close"
+        st.caption(f"{_cap_mid} · loaded {_loaded_et}")
 
         # Live action status
         qqq_close_val = float(qqq.iloc[-1]["Close"])
