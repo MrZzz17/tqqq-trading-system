@@ -412,15 +412,15 @@ def render():
                 plot_bgcolor="rgba(10,15,26,1)",
                 yaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            tickprefix="$", tickformat=",",
-                           showgrid=True, zeroline=False,
-                           fixedrange=True),
+                           showgrid=True, zeroline=False),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            showgrid=False,
                            rangeslider=dict(visible=True, thickness=0.05)),
                 showlegend=False,
+                dragmode="zoom",
             )
             st.plotly_chart(eq_fig, use_container_width=True,
-                            config={"displayModeBar": False})
+                            config={"displayModeBar": False, "scrollZoom": True})
 
         # (Last Trade + Allocation moved to top)
 
@@ -713,7 +713,8 @@ def render():
         year_now = dt.datetime.now().year
         swings = detect_swings(tqqq, min_move_pct=swing_min_pct, year_filter=year_now - 1)
         fig = build_tqqq_chart(tqqq, swings=swings, lookback_days=chart_lookback)
-        st.plotly_chart(fig, key="main_chart", use_container_width=True)
+        st.plotly_chart(fig, key="main_chart", use_container_width=True,
+                        config={"scrollZoom": True})
 
         # MA Table
         latest = tqqq.iloc[-1]
@@ -1013,7 +1014,6 @@ in a taxable account.""")
                     yaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
-                        fixedrange=True,
                     ),
                     xaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
@@ -1034,7 +1034,8 @@ in a taxable account.""")
                         ),
                     ),
                 )
-                st.plotly_chart(eq_fig, use_container_width=True)
+                st.plotly_chart(eq_fig, use_container_width=True,
+                                config={"scrollZoom": True})
 
             # ── Summary table with max drawdown ──
             summary_rows = []

@@ -114,8 +114,8 @@ def build_tqqq_chart(
             rangeslider=dict(visible=True, thickness=0.04),
             gridcolor=GRID_COLOR,
         ),
-        yaxis=dict(fixedrange=True, gridcolor=GRID_COLOR),
-        yaxis2=dict(fixedrange=True, gridcolor=GRID_COLOR),
+        yaxis=dict(gridcolor=GRID_COLOR),
+        yaxis2=dict(gridcolor=GRID_COLOR),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
             font=dict(color="#9ca3af", size=11),
