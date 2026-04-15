@@ -220,6 +220,66 @@ def render():
             </div>
         </div>""", unsafe_allow_html=True)
 
+        # ── Last Trade + Current Allocation ──
+        if bt_results and lt:
+            pct_deployed = lt.cash_deployed / lt.portfolio_before * 100 if lt.portfolio_before > 0 else 0
+            invested_pct = pct_deployed
+            cash_pct = 100 - invested_pct
+            trade_pnl = lt.portfolio_after - lt.portfolio_before
+
+            st.markdown(f"""<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px;
+                    background: rgba(255,255,255,0.02);">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.1em; margin-bottom: 10px;">Last Trade</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; font-size: 0.82em;">
+                        <div>
+                            <div style="color: #6b7280; font-size: 0.85em;">Signal</div>
+                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280; font-size: 0.85em;">Entry → Exit</div>
+                            <div style="color: #f0f0f0; font-weight: 600;">{lt.entry_date} → {lt.exit_date}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280; font-size: 0.85em;">Return</div>
+                            <div style="color: {lt_color}; font-weight: 800;
+                                font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280; font-size: 0.85em;">P&L</div>
+                            <div style="color: {lt_color}; font-weight: 800;
+                                font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75em; color: #6b7280; margin-top: 8px;">
+                        Buy @ ${lt.entry_price:.2f} · Sell @ ${lt.exit_price:.2f} ·
+                        {lt.shares:,.0f} shares · {lt.duration_days} days</div>
+                </div>
+                <div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px;
+                    background: rgba(255,255,255,0.02); text-align: center;">
+                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                        letter-spacing: 0.1em; margin-bottom: 10px;">Current Allocation</div>
+                    <div style="display: flex; height: 8px; border-radius: 4px; overflow: hidden;
+                        background: rgba(255,255,255,0.05); margin-bottom: 10px;">
+                        <div style="width: {invested_pct}%; background: #818cf8;"></div>
+                        <div style="width: {cash_pct}%; background: rgba(255,255,255,0.1);"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-around;">
+                        <div>
+                            <div style="font-size: 1.3em; font-weight: 800; color: #818cf8;
+                                font-family: 'JetBrains Mono', monospace;">{invested_pct:.0f}%</div>
+                            <div style="font-size: 0.72em; color: #6b7280;">TQQQ</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.3em; font-weight: 800; color: #9ca3af;
+                                font-family: 'JetBrains Mono', monospace;">{cash_pct:.0f}%</div>
+                            <div style="font-size: 0.72em; color: #6b7280;">Cash</div>
+                        </div>
+                    </div>
+                </div>
+            </div>""", unsafe_allow_html=True)
+
         # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
         if bt_results:
@@ -352,65 +412,7 @@ def render():
                             config={"scrollZoom": True, "displayModeBar": False,
                                     "responsive": True})
 
-        # ── Last Trade + Current Allocation ──
-        if bt_results and lt:
-            pct_deployed = lt.cash_deployed / lt.portfolio_before * 100 if lt.portfolio_before > 0 else 0
-            invested_pct = pct_deployed
-            cash_pct = 100 - invested_pct
-            trade_pnl = lt.portfolio_after - lt.portfolio_before
-
-            st.markdown(f"""<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px;
-                    background: rgba(255,255,255,0.02);">
-                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.1em; margin-bottom: 10px;">Last Trade</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; font-size: 0.82em;">
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">Signal</div>
-                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">Entry → Exit</div>
-                            <div style="color: #f0f0f0; font-weight: 600;">{lt.entry_date} → {lt.exit_date}</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">Return</div>
-                            <div style="color: {lt_color}; font-weight: 800;
-                                font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">P&L</div>
-                            <div style="color: {lt_color}; font-weight: 800;
-                                font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.75em; color: #6b7280; margin-top: 8px;">
-                        Buy @ ${lt.entry_price:.2f} · Sell @ ${lt.exit_price:.2f} ·
-                        {lt.shares:,.0f} shares · {lt.duration_days} days</div>
-                </div>
-                <div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px;
-                    background: rgba(255,255,255,0.02); text-align: center;">
-                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.1em; margin-bottom: 10px;">Current Allocation</div>
-                    <div style="display: flex; height: 8px; border-radius: 4px; overflow: hidden;
-                        background: rgba(255,255,255,0.05); margin-bottom: 10px;">
-                        <div style="width: {invested_pct}%; background: #818cf8;"></div>
-                        <div style="width: {cash_pct}%; background: rgba(255,255,255,0.1);"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-around;">
-                        <div>
-                            <div style="font-size: 1.3em; font-weight: 800; color: #818cf8;
-                                font-family: 'JetBrains Mono', monospace;">{invested_pct:.0f}%</div>
-                            <div style="font-size: 0.72em; color: #6b7280;">TQQQ</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.3em; font-weight: 800; color: #9ca3af;
-                                font-family: 'JetBrains Mono', monospace;">{cash_pct:.0f}%</div>
-                            <div style="font-size: 0.72em; color: #6b7280;">Cash</div>
-                        </div>
-                    </div>
-                </div>
-            </div>""", unsafe_allow_html=True)
+        # (Last Trade + Allocation moved to top)
 
         # ── Market Health Panel ──
         st.markdown("### Market Health")
