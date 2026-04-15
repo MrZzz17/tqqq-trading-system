@@ -229,7 +229,7 @@ def render():
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;">
-                    <div style="display: grid; grid-template-columns: auto auto auto auto auto 2fr; gap: 10px; align-items: center;">
+                    <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
                         <div style="text-align: center; padding-right: 10px;">
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
                                 letter-spacing: -0.02em; line-height: 1;">BUY</div>
@@ -282,7 +282,7 @@ def render():
                 st.markdown(f"""<div style="border: 2px solid {act_color}44; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, {act_color}08, rgba(255,255,255,0.02));
                     margin: 8px 0 16px 0;">
-                    <div style="display: grid; grid-template-columns: auto auto auto auto auto 2fr; gap: 10px; align-items: center;">
+                    <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
                         <div style="text-align: center; padding-right: 10px;">
                             <div style="font-size: 2.8em; font-weight: 900; color: {act_color};
                                 letter-spacing: -0.02em; line-height: 1;">SELL</div>
@@ -447,8 +447,6 @@ def render():
                 x=eq_dates_f, y=eq_vals_f,
                 mode="lines",
                 line=dict(color="#818cf8", width=2.5),
-                fill="tozeroy",
-                fillcolor="rgba(129,140,248,0.08)",
                 hovertemplate="<b>%{x|%b %d, %Y}</b><br>$%{y:,.0f}<extra></extra>",
             ))
             y_min = min(eq_vals_f) * 0.95 if eq_vals_f else 0
@@ -462,7 +460,7 @@ def render():
                 yaxis=dict(gridcolor="rgba(255,255,255,0.04)",
                            tickprefix="$", tickformat=",",
                            showgrid=True, zeroline=False,
-                           range=[0, y_max], fixedrange=True),
+                           range=[y_min, y_max], fixedrange=True),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            showgrid=False),
                 showlegend=False,
@@ -977,8 +975,8 @@ in a taxable account.""")
                     x=eq_dates2_f, y=eq_vals2_f,
                     mode="lines", name="Strategy",
                     line=dict(color="#818cf8", width=2.5),
-                    fill="tozeroy", fillcolor="rgba(129,140,248,0.06)",
                 ))
+                y_min2 = min(eq_vals2_f) * 0.95 if eq_vals2_f else 0
                 y_max2 = max(eq_vals2_f) * 1.05 if eq_vals2_f else 100000
                 eq_fig2.update_layout(
                     template="plotly_dark",
@@ -989,7 +987,7 @@ in a taxable account.""")
                     yaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
-                        range=[0, y_max2], fixedrange=True,
+                        range=[y_min2, y_max2], fixedrange=True,
                     ),
                     xaxis=dict(gridcolor="rgba(255,255,255,0.04)"),
                 )
