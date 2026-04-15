@@ -504,22 +504,22 @@ def render():
                             border: 1px solid {cross_color}44;">{cross_label}</span>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; font-size: 0.82em;">
+                <div style="display: flex; justify-content: center; gap: 20px; font-size: 1.0em; margin-top: 8px;">
                     <div style="text-align: center;">
-                        <div style="color: #657786; margin-bottom: 2px;">21-EMA</div>
-                        <div style="color: {ema21_color}; font-weight: 600;">{ema21_dist}</div>
+                        <div style="color: #6b7280; font-size: 0.72em; margin-bottom: 2px;">21-EMA</div>
+                        <div style="color: {ema21_color}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{ema21_dist}</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="color: #657786; margin-bottom: 2px;">50-day</div>
-                        <div style="color: {sma50_color}; font-weight: 600;">{sma50_dist}</div>
+                        <div style="color: #6b7280; font-size: 0.72em; margin-bottom: 2px;">50-day</div>
+                        <div style="color: {sma50_color}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{sma50_dist}</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="color: #657786; margin-bottom: 2px;">200-day</div>
-                        <div style="color: {sma200_color}; font-weight: 600;">{sma200_dist}</div>
+                        <div style="color: #6b7280; font-size: 0.72em; margin-bottom: 2px;">200-day</div>
+                        <div style="color: {sma200_color}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{sma200_dist}</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="color: #657786; margin-bottom: 2px;">From Peak</div>
-                        <div style="color: {dd_color}; font-weight: 600;">{dd_pct:+.1f}%</div>
+                        <div style="color: #6b7280; font-size: 0.72em; margin-bottom: 2px;">From Peak</div>
+                        <div style="color: {dd_color}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{dd_pct:+.1f}%</div>
                     </div>
                 </div>
                 <div style="margin-top: 10px; font-size: 0.78em; color: #8899A6;">
