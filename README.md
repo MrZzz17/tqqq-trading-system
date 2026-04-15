@@ -12,12 +12,12 @@ streamlit run app.py
 
 ## Phase 1: TQQQ Dashboard (Current)
 
-- **Market Status Panel** — Distribution day counter for Nasdaq and S&P 500 with regime detection
-- **Buy Signal Detection** — Follow-Through Day and 3 White Knights automatic detection
-- **Sell Signal Scoreboard** — All 9 sell rules with live triggered/clear status
-- **Alert System** — Green/Yellow/Orange/Red alert level with suggested action
-- **Swing Tracker** — Automated peak/trough detection with % moves and durations
-- **Interactive Charts** — Candlestick chart with 10/21/50/200-day MAs and volume
+- **Market pulse** — Nasdaq & SPY regime labels (distribution days + MA structure)
+- **V6 live card** — Buy / Sell / Flat from the last daily close; open-position detail when long
+- **Backtest hero & equity curve** — Cumulative performance with Period control (1D … All)
+- **Market Health** — QQQ/SPY vs MAs; regime + weekly MACD explanation tiles
+- **System Signals** — FTD, weekly MACD, QQQ vs 200-day (entries); 200-day exit, 12% trail, crash detector (risk)
+- **TQQQ chart** — Candlesticks, 10/21/50/200 MAs, volume, swing markers (same Period as equity chart)
 
 ## Phase 2: Stock Screener (Planned)
 

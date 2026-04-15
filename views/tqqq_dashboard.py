@@ -533,10 +533,7 @@ def render():
                     stats_as_of = ""
 
             ytd_pct = ytd_result.total_return_pct if ytd_result else 0
-            ytd_color = "#17BF63" if ytd_pct >= 0 else "#E0245E"
             py_pct = prior_year_result.total_return_pct if prior_year_result else 0
-            py_color = "#17BF63" if py_pct >= 0 else "#E0245E"
-
             py_color = "#34d399" if py_pct >= 0 else "#f87171"
             ytd_color = "#34d399" if ytd_pct >= 0 else "#f87171"
 
@@ -666,8 +663,12 @@ def render():
                            tickprefix="$", tickformat=",",
                            showgrid=True, zeroline=False,
                            range=[y_min, y_max], fixedrange=True),
-                xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
-                           showgrid=False, fixedrange=True),
+                xaxis=dict(
+                    gridcolor="rgba(255,255,255,0.03)",
+                    showgrid=False,
+                    fixedrange=True,
+                    rangebreaks=[dict(bounds=["sat", "mon"])],
+                ),
                 showlegend=False,
             )
             st.plotly_chart(
@@ -769,9 +770,14 @@ def render():
         macd_val = float(w_macd) if w_macd is not None and not pd.isna(w_macd) else None
         macd_sig_val = float(w_macd_sig) if w_macd_sig is not None and not pd.isna(w_macd_sig) else None
 
-        macd_color = "#17BF63" if (macd_val and macd_val > 0) else "#E0245E"
-        macd_label = "Bullish" if (macd_val and macd_val > 0) else "Bearish"
-        macd_trend = "Rising" if (macd_val and macd_sig_val and macd_val > macd_sig_val) else "Falling"
+        macd_color = "#17BF63" if (macd_val is not None and macd_val > 0) else "#E0245E"
+        macd_label = "Bullish" if (macd_val is not None and macd_val > 0) else "Bearish"
+        macd_trend = (
+            "Rising"
+            if (macd_val is not None and macd_sig_val is not None and macd_val > macd_sig_val)
+            else "Falling"
+        )
+        macd_val_display = f"{macd_val:+.1f}" if macd_val is not None else "N/A"
 
         # Tile accent — keyed by regime_str only (avoids NameError if regime_color ever missing)
         _tile_rc = {"Strong Bull": "#17BF63", "Bull": "#FFAD1F", "Bear": "#E0245E"}.get(regime_str, "#657786")
@@ -785,9 +791,7 @@ def render():
         else:
             _strong_bull_status = "Regime now: Bear — QQQ below 200-day SMA."
 
-        _macd_expl = (
-            "Bullish" if (macd_val and macd_val > 0) else "Bearish"
-        )
+        _macd_expl = "Bullish" if (macd_val is not None and macd_val > 0) else "Bearish"
         _macd_now = (
             f"Weekly MACD now: {_macd_expl} (MACD {'&gt; 0' if macd_val and macd_val > 0 else '≤ 0'})."
             if macd_val is not None
@@ -804,7 +808,7 @@ def render():
                 background: {macd_color}08; text-align: center;">
                 <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Weekly MACD</div>
                 <div style="font-size: 1.4em; font-weight: 800; color: {macd_color};">{macd_label}</div>
-                <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{macd_trend} · {macd_val:+.1f}</div>
+                <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{macd_trend} · {macd_val_display}</div>
             </div>
             <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 14px 16px;
                 background: rgba(29,161,242,0.03); text-align: left;">
@@ -1163,10 +1167,11 @@ in a taxable account.""")
    (**Uptrend** / **Caution** / **Correction**) from distribution-day count and price vs 50/200-day MAs — same idea as
    IBD-style “Confirmed Uptrend” vs “Market in Correction,” in compact labels.
 2. **Position card** (when relevant) — Live **Buy / Sell / Flat** from the V6 engine on the last daily close.
-3. **System Signals** — **Follow-Through Day**, **Weekly MACD** on QQQ, and **QQQ vs 200-day** (entry context).
-   Below that, **200-day exit**, **12% trailing stop**, and **crash detector** mirror major risk rules.
-4. **Market Health** — QQQ/SPY detail plus **Strong Bull** / weekly MACD context. Use **TQQQ Price Chart**
-   (same **Period** control as the equity curve) and the **Moving Average Positioning** table to see price vs MAs.
+3. **Lifetime performance & equity curve** — Strategy backtest value and cumulative equity (**Period** control: 1D … All).
+4. **Market Health** — QQQ/SPY vs MAs plus **Strong Bull** / weekly MACD context tiles.
+5. **System Signals** — **Follow-Through Day**, **Weekly MACD** on QQQ, and **QQQ vs 200-day** (entry context); next row:
+   **200-day exit**, **12% trailing stop**, and **crash detector** (risk).
+6. **TQQQ Price Chart** — Same **Period** as the equity curve; **Moving Average Positioning** table below for distance vs MAs.
 """)
 
         st.markdown("### Weekly Routine (15 minutes)")
@@ -1184,6 +1189,7 @@ in a taxable account.""")
 | Section | What it tells you |
 |---------|-------------------|
 | **Top row** | Last prices; **Nasdaq / SPY pulse** (uptrend vs stress vs correction) |
+| **Live position card** | V6 **Buy / Sell / Flat** and detail for the last daily close (when Yahoo data is live) |
 | **Hero & equity chart** | Strategy backtest value and cumulative equity (same **Period** presets as TQQQ chart) |
 | **Market Health** | QQQ & SPY vs MAs; **Strong Bull** / weekly MACD definitions |
 | **System Signals** | FTD, weekly MACD, QQQ vs 200-day — **entries**; next row: 200d exit, 12% trail, crash — **risk** |
@@ -1193,7 +1199,7 @@ in a taxable account.""")
 
         st.markdown("### Sidebar Controls")
         st.markdown(f"""
-- **TQQQ chart Period** — Same ranges as the equity curve (1D … All)
+- **Period** — Lives on the **Dashboard** and **Historical Performance** tabs (not in the sidebar). It filters both the **equity curve** and the **TQQQ price chart** (1D … All).
 - **Bulls %** — Optional AAII bullish % for your own tracking (not fed into the on-page tiles; strategy cards use Yahoo data + V6 engine only).
 - **Refresh Data** — Clears caches and immediately re-fetches quotes **and** re-runs the V6 engine. Quote cache TTL: {config.CACHE_EXPIRY_HOURS}h unless refreshed.
 """)
@@ -1247,7 +1253,11 @@ in a taxable account.""")
                         tickprefix="$", tickformat=",",
                         range=[y_min2, y_max2], fixedrange=True,
                     ),
-                    xaxis=dict(gridcolor="rgba(255,255,255,0.04)", fixedrange=True),
+                    xaxis=dict(
+                        gridcolor="rgba(255,255,255,0.04)",
+                        fixedrange=True,
+                        rangebreaks=[dict(bounds=["sat", "mon"])],
+                    ),
                 )
                 st.plotly_chart(
                     eq_fig2,
@@ -1318,7 +1328,7 @@ in a taxable account.""")
                     pnl_val = r.ending_value - r.starting_value
                     ym3.metric("P&L", f"${pnl_val:+,.0f}", delta=f"{r.total_return_pct:+.1f}%")
 
-                    # Build event list: each BUY and SELL is a separate event (closed round-trips only)
+                    # Build event list: each BUY and SELL per closed trade, plus optional open BUY from engine
                     events = []
                     for ti, t in enumerate(r.trades):
                         pct_deployed = t.cash_deployed / t.portfolio_before * 100 if t.portfolio_before > 0 else 0
