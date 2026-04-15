@@ -440,6 +440,14 @@ def render():
             ytd_result = next((r for r in bt_results if r.year == current_year), None)
             prior_year_result = next((r for r in bt_results if r.year == current_year - 1), None)
 
+            # Hero %s use daily backtest equity (last completed bar), not live intraday quotes.
+            stats_as_of = ""
+            if bt_equity:
+                try:
+                    stats_as_of = pd.Timestamp(max(bt_equity.keys())).strftime("%b %d, %Y")
+                except (TypeError, ValueError):
+                    stats_as_of = ""
+
             ytd_pct = ytd_result.total_return_pct if ytd_result else 0
             ytd_color = "#17BF63" if ytd_pct >= 0 else "#E0245E"
             py_pct = prior_year_result.total_return_pct if prior_year_result else 0
@@ -482,6 +490,14 @@ def render():
                         <div style="font-size: 0.75em; color: #6b7280; margin-top: 6px;">
                             vs B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
                     </div>
+                </div>
+                <div style="text-align: center; margin-top: 18px; padding-top: 14px;
+                    border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78em; color: #6b7280;
+                    line-height: 1.45;">
+                    Returns above are from the <strong style="color: #9ca3af;">strategy backtest</strong> through the
+                    <strong style="color: #9ca3af;">last daily close{(" (" + stats_as_of + ")") if stats_as_of else ""}</strong>.
+                    They do <strong style="color: #9ca3af;">not</strong> tick with intraday prices; refresh after the session
+                    settles for today's bar.
                 </div>
             </div>""", unsafe_allow_html=True)
 
