@@ -330,54 +330,58 @@ def render():
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;">
-                    <div style="display: grid;
-                        grid-template-columns: auto minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 2.25fr);
-                        grid-template-rows: auto auto;
-                        column-gap: 6px; row-gap: 4px; align-items: start;">
-                        <div style="grid-column: 1; grid-row: 1 / 3; align-self: center; text-align: center; padding-right: 6px;">
+                    <div style="display: flex; flex-direction: row; align-items: center; gap: 14px; flex-wrap: nowrap;">
+                        <div style="flex: 0 0 auto; text-align: center; padding-right: 4px;">
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
                                 letter-spacing: -0.02em; line-height: 1;">{main_lbl}</div>
                             <div style="font-size: 0.75em; color: #6b7280; margin-top: 4px;">As of close</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">{live.as_of_date}</div>
                         </div>
-                        <div style="grid-column: 2; grid-row: 1; text-align: center;"><div style="{_gh}">Position</div></div>
-                        <div style="grid-column: 3; grid-row: 1; text-align: center;"><div style="{_gh}">Entry</div></div>
-                        <div style="grid-column: 4; grid-row: 1; text-align: center;"><div style="{_gh}">Entry date</div></div>
-                        <div style="grid-column: 5; grid-row: 1; text-align: center;"><div style="{_gh}">Now</div></div>
-                        <div style="grid-column: 6; grid-row: 1; text-align: center;"><div style="{_gh}">P&L</div></div>
-                        <div style="grid-column: 2; grid-row: 2; text-align: center;">
-                            <div style="font-size: 1.4em; font-weight: 800; color: #818cf8;
-                                font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
-                        </div>
-                        <div style="grid-column: 3; grid-row: 2; text-align: center;">
-                            <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">${live.entry_price:.2f}</div>
-                        </div>
-                        <div style="grid-column: 4; grid-row: 2; text-align: center;">
-                            <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">{live.entry_date or "—"}</div>
-                            <div style="font-size: 0.75em; color: #9ca3af; margin-top: 2px; line-height: 1.2;">4:00 PM ET</div>
-                        </div>
-                        <div style="grid-column: 5; grid-row: 2; text-align: center;">
-                            <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">${_tqqq_show:.2f}</div>
-                        </div>
-                        <div style="grid-column: 6; grid-row: 2; text-align: center;">
-                            <div style="font-size: 1.4em; font-weight: 800; color: {unr_color};
-                                font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
-                        </div>
-                        <div style="grid-column: 7; grid-row: 1; text-align: left; padding-left: 16px;
-                            border-left: 2px solid rgba(52,211,153,0.3); min-width: 0;">
-                            <div style="{_gh} letter-spacing: 0.08em;">Why</div>
-                        </div>
-                        <div style="grid-column: 7; grid-row: 2; text-align: left; padding-left: 18px; min-width: 0;">
-                            <div style="font-size: 1.0em; color: #f0f0f0; line-height: 1.6; font-weight: 600;">
-                                {why_text} QQQ above 200-day SMA.</div>
-                            <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 6px; line-height: 1.6; font-weight: 600;">
-                                {regime_str}: {exit_desc} Allocation: {alloc_label}</div>
-                            <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
-                                {days_in} days · {live.shares:,.0f} shares · PV ${live.portfolio_value:,.0f}</div>
+                        <div style="flex: 1 1 auto; min-width: 0;">
+                            <div style="display: grid;
+                                grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 2.25fr);
+                                grid-template-rows: auto auto;
+                                column-gap: 6px; row-gap: 6px; align-items: start;">
+                                <div style="grid-column: 1; grid-row: 1; text-align: center;"><div style="{_gh}">Position</div></div>
+                                <div style="grid-column: 2; grid-row: 1; text-align: center;"><div style="{_gh}">Entry</div></div>
+                                <div style="grid-column: 3; grid-row: 1; text-align: center;"><div style="{_gh}">Entry date</div></div>
+                                <div style="grid-column: 4; grid-row: 1; text-align: center;"><div style="{_gh}">Now</div></div>
+                                <div style="grid-column: 5; grid-row: 1; text-align: center;"><div style="{_gh}">P&L</div></div>
+                                <div style="grid-column: 6; grid-row: 1; text-align: left; padding-left: 16px;
+                                    border-left: 2px solid rgba(52,211,153,0.3); min-width: 0;">
+                                    <div style="{_gh} letter-spacing: 0.08em;">Why</div>
+                                </div>
+                                <div style="grid-column: 1; grid-row: 2; text-align: center;">
+                                    <div style="font-size: 1.4em; font-weight: 800; color: #818cf8;
+                                        font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
+                                </div>
+                                <div style="grid-column: 2; grid-row: 2; text-align: center;">
+                                    <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
+                                        font-family: 'JetBrains Mono', monospace;">${live.entry_price:.2f}</div>
+                                </div>
+                                <div style="grid-column: 3; grid-row: 2; text-align: center;">
+                                    <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
+                                        font-family: 'JetBrains Mono', monospace;">{live.entry_date or "—"}</div>
+                                    <div style="font-size: 0.75em; color: #9ca3af; margin-top: 2px; line-height: 1.2;">4:00 PM ET</div>
+                                </div>
+                                <div style="grid-column: 4; grid-row: 2; text-align: center;">
+                                    <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
+                                        font-family: 'JetBrains Mono', monospace;">${_tqqq_show:.2f}</div>
+                                </div>
+                                <div style="grid-column: 5; grid-row: 2; text-align: center;">
+                                    <div style="font-size: 1.4em; font-weight: 800; color: {unr_color};
+                                        font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
+                                </div>
+                                <div style="grid-column: 6; grid-row: 2; text-align: left; padding-left: 18px; min-width: 0;">
+                                    <div style="font-size: 1.0em; color: #f0f0f0; line-height: 1.6; font-weight: 600;">
+                                        {why_text} QQQ above 200-day SMA.</div>
+                                    <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 6px; line-height: 1.6; font-weight: 600;">
+                                        {regime_str}: {exit_desc} Allocation: {alloc_label}</div>
+                                    <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
+                                        {days_in} days · {live.shares:,.0f} shares · PV ${live.portfolio_value:,.0f}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
