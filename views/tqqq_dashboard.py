@@ -184,8 +184,13 @@ def render():
         w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
         macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
 
+        all_trades_flat = [t for r in bt_results for t in r.trades]
+        lt = all_trades_flat[-1] if all_trades_flat else None
+        lt_color = "#34d399" if (lt and lt.return_pct > 0) else "#f87171"
+        today_str = dt.date.today().strftime("%B %d, %Y")
+
         # Check if last trade was a sell (we're currently flat)
-        last_was_sell = lt and lt.outcome in ("Win", "Loss")  # all completed trades end with a sell
+        last_was_sell = lt is not None
 
         if qqq_above_200_now and macd_pos_now:
             if last_was_sell:
@@ -204,11 +209,6 @@ def render():
         else:
             act_text = "STAY OUT — QQQ below 200-day SMA. Cash or SGOV only."
             act_color = "#f87171"; act_icon = "🔴"
-
-        all_trades_flat = [t for r in bt_results for t in r.trades]
-        lt = all_trades_flat[-1] if all_trades_flat else None
-        lt_color = "#34d399" if (lt and lt.return_pct > 0) else "#f87171"
-        today_str = dt.date.today().strftime("%B %d, %Y")
 
         st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 12px;
             padding: 16px; background: {act_color}06; margin: 8px 0 16px 0;">
