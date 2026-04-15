@@ -9,12 +9,14 @@ $100K starting capital, full TQQQ history from 2011.
 
 import datetime as dt
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 import yfinance as yf
+
+import config
 
 
 STARTING_CAPITAL = 100_000.0
@@ -39,6 +41,24 @@ class Trade:
 
 
 @dataclass
+class LiveSnapshot:
+    """Strategy state as of the last completed daily bar (before any synthetic end-of-series close)."""
+    as_of_date: str
+    tqqq_close: float
+    portfolio_value: float
+    in_position: bool
+    allocation_pct: float
+    shares: float
+    cash: float
+    entry_date: Optional[str]
+    entry_price: float
+    signal_type: str
+    # What happened at that bar's close (same engine rules as backtest)
+    last_bar_action: str  # "ENTRY" | "EXIT" | "NO_TRADE"
+    last_exit_price: Optional[float] = None  # TQQQ close on exit bar, if last bar was an exit
+
+
+@dataclass
 class YearResult:
     year: int
     total_return_pct: float
@@ -60,7 +80,7 @@ class YearResult:
 
 # ── Data ──────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=86400, show_spinner=False)
+@st.cache_data(ttl=config.STRATEGY_ENGINE_CACHE_SECONDS, show_spinner=False)
 def _fetch(ticker: str, start: str, end: str) -> pd.DataFrame:
     df = yf.download(ticker, start=start, end=end, interval="1d",
                      progress=False, auto_adjust=True)
@@ -124,7 +144,7 @@ def _find_ftd_signal(nasdaq, idx):
 
 # ── Main Engine ───────────────────────────────────────────────────
 
-def _run_continuous(start_year: int, end_year: int):
+def _run_continuous(start_year: int, end_year: int, finalize_open_position: bool = True):
     fetch_start = f"{start_year - 2}-01-01"
     end_dt = min(dt.date(end_year, 12, 31), dt.date.today())
 
@@ -133,7 +153,7 @@ def _run_continuous(start_year: int, end_year: int):
     nasdaq = _fetch("^IXIC", fetch_start, end_dt.strftime("%Y-%m-%d"))
 
     if tqqq.empty or qqq.empty or nasdaq.empty:
-        return {}, {}, pd.DataFrame(), pd.DataFrame()
+        return {}, {}, pd.DataFrame(), pd.DataFrame(), None
 
     tqqq = _indicators(tqqq)
     qqq = _indicators(qqq)
@@ -158,8 +178,12 @@ def _run_continuous(start_year: int, end_year: int):
     exited = False
     cooldown_until = None
     ftd_cooldown_until = None
+    last_bar_bought = False
+    last_bar_sold = False
 
     for i, date in enumerate(dates):
+        day_bought = False
+        day_sold = False
         price = float(tqqq.loc[date, "Close"])
         total = cash + shares * price
 
@@ -251,6 +275,7 @@ def _run_continuous(start_year: int, end_year: int):
         if target >= 0.1 and current_alloc < 0.1:
             deploy = min(total * target, cash)
             if deploy > 0:
+                day_bought = True
                 entry_shares = deploy / price
                 shares += entry_shares
                 cash -= deploy
@@ -262,6 +287,7 @@ def _run_continuous(start_year: int, end_year: int):
                 peak_portfolio = max(peak_portfolio, total)
 
         elif target < 0.1 and current_alloc > 0.1:
+            day_sold = True
             proceeds = shares * price
             cash += proceeds
             exit_total = cash
@@ -289,31 +315,47 @@ def _run_continuous(start_year: int, end_year: int):
             peak_portfolio = cash
 
         equity[date] = cash + shares * price
+        last_bar_bought = day_bought
+        last_bar_sold = day_sold
 
-    # Close open position
-    if shares > 0:
+    live_snapshot: Optional[LiveSnapshot] = None
+    if len(dates) > 0:
+        last_d = dates[-1]
+        last_px = float(tqqq.loc[last_d, "Close"])
+        tot_end = cash + shares * last_px
+        ap = (shares * last_px / tot_end * 100) if tot_end > 0 else 0.0
+        in_pos = shares > 1e-9
+        if last_bar_bought:
+            tact = "ENTRY"
+        elif last_bar_sold:
+            tact = "EXIT"
+        else:
+            tact = "NO_TRADE"
+        ed_str = entry_date.strftime("%Y-%m-%d") if entry_date is not None else None
+        ep = float(entry_price) if entry_date is not None else 0.0
+        sig = entry_signal if entry_date is not None else ""
+        lex = round(last_px, 2) if last_bar_sold else None
+        live_snapshot = LiveSnapshot(
+            as_of_date=last_d.strftime("%Y-%m-%d"),
+            tqqq_close=round(last_px, 2),
+            portfolio_value=round(tot_end, 2),
+            in_position=in_pos,
+            allocation_pct=round(ap, 2),
+            shares=round(float(shares), 4),
+            cash=round(float(cash), 2),
+            entry_date=ed_str,
+            entry_price=round(ep, 2),
+            signal_type=sig,
+            last_bar_action=tact,
+            last_exit_price=lex,
+        )
+
+    # Optional: mark equity at last bar as 100% cash for year-end stats (do NOT add a fake trade —
+    # that looked like a real "sell" on the dashboard when the strategy was still long).
+    if finalize_open_position and shares > 0:
         last = dates[-1]
         price = float(tqqq.loc[last, "Close"])
         cash += shares * price
-        if entry_date:
-            pnl = cash - entry_value
-            trades_list.append({
-                "entry": entry_date.strftime("%Y-%m-%d"),
-                "exit": last.strftime("%Y-%m-%d"),
-                "entry_price": round(entry_price, 2),
-                "exit_price": round(price, 2),
-                "days": (last - entry_date).days,
-                "ret": round((pnl / entry_value) * 100, 2),
-                "pnl": round(pnl, 0),
-                "win": pnl > 0,
-                "signal": entry_signal,
-                "shares": round(entry_shares, 2),
-                "deployed": round(entry_cash, 0),
-                "before": round(entry_value, 0),
-                "after": round(cash, 0),
-                "cash_after": round(cash, 0),
-                "year": last.year,
-            })
         shares = 0.0
         equity[last] = cash
 
@@ -333,7 +375,7 @@ def _run_continuous(start_year: int, end_year: int):
         )
         trades_by_year.setdefault(t["year"], []).append(trade)
 
-    return equity, trades_by_year, tqqq, qqq
+    return equity, trades_by_year, tqqq, qqq, live_snapshot
 
 
 def _build_year_result(year, equity, trades, tqqq_df, qqq_df):
@@ -385,7 +427,7 @@ def _build_year_result(year, equity, trades, tqqq_df, qqq_df):
 def run_all_backtests():
     """Returns (results, equity_curve_dict)."""
     current_year = dt.date.today().year
-    equity, trades_by_year, tqqq, qqq = _run_continuous(2011, current_year)
+    equity, trades_by_year, tqqq, qqq, _ = _run_continuous(2011, current_year, finalize_open_position=True)
     if not equity:
         return [], {}
     results = []
@@ -394,3 +436,29 @@ def run_all_backtests():
         if r:
             results.append(r)
     return results, equity
+
+
+@st.cache_data(ttl=config.STRATEGY_ENGINE_CACHE_SECONDS, show_spinner=False)
+def get_dashboard_state() -> Tuple[Optional[LiveSnapshot], List[YearResult], Dict]:
+    """Single V6 engine run: same data as live alerts, charts, and trade lists.
+
+    No end-of-series synthetic exit (finalize_open_position=False). Cached together with _fetch.
+    """
+    current_year = dt.date.today().year
+    equity, trades_by_year, tqqq, qqq, snap = _run_continuous(
+        2011, current_year, finalize_open_position=False
+    )
+    if not equity:
+        return None, [], {}
+    results: List[YearResult] = []
+    for year in range(2011, current_year + 1):
+        r = _build_year_result(year, equity, trades_by_year.get(year, []), tqqq, qqq)
+        if r:
+            results.append(r)
+    return snap, results, equity
+
+
+def get_live_trading_snapshot() -> Optional[LiveSnapshot]:
+    """Same snapshot as the dashboard (one cached engine run — do not duplicate)."""
+    snap, _, _ = get_dashboard_state()
+    return snap

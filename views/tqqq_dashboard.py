@@ -5,9 +5,25 @@ Rules-based TQQQ buy/sell signal system.
 
 import datetime as dt
 from typing import List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _price_bar_caption(bar_date: dt.date) -> str:
+    """Last row in daily feed = regular-session official close for that session date."""
+    return (
+        f"{bar_date.strftime('%b %d, %Y')} close · 4:00 PM ET (regular session)"
+    )
+
+
+def _quote_fetch_stamp() -> str:
+    """Wall-clock when this dataframe was materialized on the server (cache or fresh fetch)."""
+    now = dt.datetime.now(_ET)
+    return f"Snapshot · {now.strftime('%b %d, %Y %I:%M %p %Z')}"
 
 # Yahoo Finance–style equity chart ranges (daily backtest series)
 EQUITY_PERIOD_OPTIONS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "3Y", "5Y", "All"]
@@ -68,15 +84,19 @@ from core.signals import (
 )
 from core.swing_tracker import detect_swings
 from core.charts import build_tqqq_chart
-from core.backtest import run_all_backtests, STARTING_CAPITAL, Trade, YearResult
+from core.backtest import (
+    get_dashboard_state,
+    STARTING_CAPITAL,
+    Trade,
+    YearResult,
+)
 import config
 import json
 import os
 
 
-def _load_backtest_cached():
-    """Load backtest from pre-committed JSON cache (instant, no recompute).
-    Returns (results, equity_dict)."""
+def _load_backtest_json_fallback():
+    """Offline fallback only — bundled JSON may be weeks stale. Do not rely on for live trading."""
     cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_cache.json")
 
     try:
@@ -159,6 +179,7 @@ def render():
         return
 
     data_date = get_latest_date(tqqq)
+    qqq_bar_date = get_latest_date(qqq)
     tqqq_price = get_current_price(tqqq)
     qqq_price = get_current_price(qqq)
 
@@ -191,8 +212,19 @@ def render():
         st.caption("Not financial advice.")
     bulls_input = bulls_pct if bulls_pct > 0 else None
 
-    # ── Load backtest from cache (instant) or recompute if stale ──
-    bt_results, bt_equity = _load_backtest_cached()
+    # ── Live engine: same Yahoo bars for alerts, equity curve, and trade list (cached together) ──
+    live, bt_results, bt_equity = get_dashboard_state()
+    using_json_fallback = False
+    if not bt_equity:
+        bt_results, bt_equity = _load_backtest_json_fallback()
+        using_json_fallback = True
+        live = None
+
+    if using_json_fallback:
+        st.error(
+            "Live Yahoo data failed — showing **stale offline backtest cache** only. "
+            "**Do not use for trading** until you click **Refresh Data** in the sidebar and this clears."
+        )
 
     # ══════════════════════════════════════════════════════════════
     # TAB LAYOUT
@@ -216,15 +248,29 @@ def render():
         REGIME_SHORT = {"Confirmed Uptrend": "Uptrend", "Uptrend Under Pressure": "Caution",
                         "Market in Correction": "Correction"}
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
-        c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
+        with c1:
+            st.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
+            st.caption(_price_bar_caption(data_date))
+        with c2:
+            st.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
+            st.caption(_price_bar_caption(qqq_bar_date))
         nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
         nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
         c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
         c4.metric("SPY", f"{sp_icon} {sp_short}")
-        st.caption(f"Data as of {data_date.strftime('%b %d, %Y')}")
+        st.caption(_quote_fetch_stamp())
+        st.caption(
+            f"Quote panel: last daily bar **{data_date.strftime('%b %d, %Y')}** "
+            f"(TradingView can be used for quotes if configured — strategy engine always uses Yahoo)."
+        )
+        if live and not using_json_fallback:
+            st.caption(
+                f"**Strategy / backtest (V6):** Yahoo daily bars through **{live.as_of_date}** close — same run as "
+                f"alerts, equity curve, and tables. Refreshes every {config.STRATEGY_ENGINE_CACHE_SECONDS // 60} minutes; "
+                f"**Refresh Data** forces both engine and quotes immediately."
+            )
 
         # Live action status
         qqq_close_val = float(qqq.iloc[-1]["Close"])
@@ -260,30 +306,61 @@ def render():
         lt_color = "#34d399" if (lt and lt.return_pct > 0) else "#f87171"
         today_str = dt.date.today().strftime("%B %d, %Y")
 
-        # Determine if we're currently in a position or flat
-        if lt:
-            last_data_date = data_date.strftime("%Y-%m-%d")
-            trade_is_open = lt.exit_date >= last_data_date
-            pct_deployed = lt.cash_deployed / lt.portfolio_before * 100 if lt.portfolio_before > 0 else 0
-            unrealized = ((tqqq_price - lt.entry_price) / lt.entry_price * 100) if lt.entry_price > 0 else 0
-            unr_color = "#34d399" if unrealized >= 0 else "#f87171"
+        # ── Forward-looking live signal (same V6 engine, last bar only — not stale backtest trade list) ──
+        if live:
+            # Position (shares) wins over last_bar_action — never flash SELL while still long
+            if live.last_bar_action == "ENTRY":
+                st.success(
+                    f"**TIME TO BUY** — Model **entered / added** at the **{live.as_of_date}** session close "
+                    f"(TQQQ ≈ ${live.tqqq_close:,.2f}). Plan to execute at that close (or immediately after in AH)."
+                )
+            elif live.in_position:
+                st.info(
+                    f"**HOLD** — Stay long. **No new buy/sell** at the **{live.as_of_date}** close. "
+                    f"Next evaluation: **following session’s close** (daily system — not intraday)."
+                )
+            elif live.last_bar_action == "EXIT":
+                ex_px = live.last_exit_price if live.last_exit_price is not None else live.tqqq_close
+                st.error(
+                    f"**TIME TO SELL / FLAT** — Model **exited to cash** at the **{live.as_of_date}** close "
+                    f"(TQQQ ≈ **${ex_px:,.2f}**)."
+                )
+            else:
+                st.warning(
+                    f"**STAY IN CASH** — Flat after **{live.as_of_date}** close. Wait for entry rules (FTD / MACD / 200d)."
+                )
 
-            if trade_is_open:
-                days_in = (dt.date.today() - dt.datetime.strptime(lt.entry_date, "%Y-%m-%d").date()).days
+            st.caption(
+                "Signals use the **last completed daily bar** (not intraday). "
+                f"Engine cache: {config.STRATEGY_ENGINE_CACHE_SECONDS // 60} min — same source as charts below."
+            )
+
+            if live.in_position:
+                pct_deployed = live.allocation_pct
+                ed_live = (dt.datetime.strptime(live.entry_date, "%Y-%m-%d").date()
+                           if live.entry_date else None)
+                days_in = (dt.date.today() - ed_live).days if ed_live else 0
+                unrealized = ((tqqq_price - live.entry_price) / live.entry_price * 100) if live.entry_price > 0 else 0
+                unr_color = "#34d399" if unrealized >= 0 else "#f87171"
                 why_text = ('Weekly MACD crossed above zero — bullish trend confirmed.'
-                            if lt.signal_type == 'MACD'
+                            if live.signal_type == 'MACD'
                             else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.'
-                                  if lt.signal_type == 'FTD'
+                                  if live.signal_type == 'FTD'
                                   else 'System defaults to invested in uptrend.'))
+                main_lbl = "BUY" if live.last_bar_action == "ENTRY" else "HOLD"
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;">
                     <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
                         <div style="text-align: center; padding-right: 10px;">
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
-                                letter-spacing: -0.02em; line-height: 1;">BUY</div>
+                                letter-spacing: -0.02em; line-height: 1;">{main_lbl}</div>
+                            <div style="font-size: 0.75em; color: #6b7280; margin-top: 4px;">As of close</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">{lt.entry_date}</div>
+                                font-family: 'JetBrains Mono', monospace;">{live.as_of_date}</div>
+                            <div style="font-size: 0.72em; color: #6b7280; margin-top: 8px;">Entry date</div>
+                            <div style="font-size: 1.0em; font-weight: 600; color: #e5e7eb;
+                                font-family: 'JetBrains Mono', monospace;">{live.entry_date}</div>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
@@ -293,7 +370,7 @@ def render():
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Entry</div>
                             <div style="font-size: 1.4em; font-weight: 700; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
+                                font-family: 'JetBrains Mono', monospace;">${live.entry_price:.2f}</div>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Now</div>
@@ -314,17 +391,22 @@ def render():
                             <div style="font-size: 0.88em; color: #d1d5db; margin-top: 8px; line-height: 1.5;">
                                 <b style="color: {regime_color};">{regime_str}:</b> {exit_desc} Allocation: <b>{alloc_label}</b></div>
                             <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
-                                {days_in} days · {lt.shares:,.0f} shares</div>
+                                {days_in} days · {live.shares:,.0f} shares · PV ${live.portfolio_value:,.0f}</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-            else:
+            elif live.last_bar_action == "EXIT" and not live.in_position:
                 act_color = "#f87171" if not qqq_above_200_now else "#fbbf24"
-                trade_pnl = lt.portfolio_after - lt.portfolio_before
+                exit_d = live.as_of_date
+                exit_px = (live.last_exit_price if live.last_exit_price is not None else live.tqqq_close)
+                match_lt = lt and lt.exit_date == live.as_of_date
+                trade_pnl = (lt.portfolio_after - lt.portfolio_before) if match_lt else 0.0
+                ret_pct = lt.return_pct if match_lt else 0.0
+                dur = lt.duration_days if match_lt else 0
                 sell_why = ('QQQ closed below 200-day SMA for 2 consecutive days — bear market confirmed.'
                             if not qqq_above_200_now
                             else ('12% trailing stop triggered — portfolio dropped from peak.'
-                                  if lt.return_pct < -5
+                                  if match_lt and lt.return_pct < -5
                                   else 'QQQ broke below 200-day SMA — exited to protect capital.'))
                 sell_next = ('Watching for re-entry signal' if qqq_above_200_now
                              else 'Staying in cash until QQQ reclaims 200-day')
@@ -336,12 +418,12 @@ def render():
                             <div style="font-size: 2.8em; font-weight: 900; color: {act_color};
                                 letter-spacing: -0.02em; line-height: 1;">SELL</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">{lt.exit_date}</div>
+                                font-family: 'JetBrains Mono', monospace;">{exit_d}</div>
                             <div style="font-size: 0.72em; color: #6b7280; text-transform: uppercase; margin-top: 10px;">Sell price</div>
                             <div style="font-size: 1.25em; font-weight: 700; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">${lt.exit_price:.2f}</div>
+                                font-family: 'JetBrains Mono', monospace;">${exit_px:.2f}</div>
                             <div style="font-size: 0.72em; color: #6b7280; text-transform: uppercase; margin-top: 8px;">Sell time</div>
-                            <div style="font-size: 0.82em; color: #9ca3af; line-height: 1.35;">4:00 PM ET<br><span style="color:#6b7280;font-size:0.9em;">Regular close (modeled)</span></div>
+                            <div style="font-size: 0.82em; color: #9ca3af; line-height: 1.35;">4:00 PM ET<br><span style="color:#6b7280;font-size:0.9em;">Regular session close</span></div>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
@@ -351,7 +433,7 @@ def render():
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Result</div>
                             <div style="font-size: 1.4em; font-weight: 900; color: {lt_color};
-                                font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
+                                font-family: 'JetBrains Mono', monospace;">{ret_pct:+.1f}%</div>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">P&L</div>
@@ -361,7 +443,7 @@ def render():
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Held</div>
                             <div style="font-size: 1.4em; font-weight: 700; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">{lt.duration_days}d</div>
+                                font-family: 'JetBrains Mono', monospace;">{dur}d</div>
                         </div>
                         <div style="border-left: 2px solid {act_color}44;
                             padding-left: 16px;">
@@ -376,12 +458,16 @@ def render():
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-                st.caption(
-                    "Execution model: entries and exits use the **official daily closing price** on that date "
-                    "(after-hours fills), not the next session’s open. The dashboard shows SELL when the last trade "
-                    "in the backtest is **closed** — often right after the data updates for a new day, not because "
-                    "we sold at the open."
-                )
+                if not match_lt:
+                    st.caption("P&L / hold time sync when cached trade list matches this exit date; engine exit price shown above is live.")
+
+            elif not live.in_position:
+                st.markdown(f"""<div style="border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px 20px;
+                    margin: 8px 0 16px 0; background: rgba(255,255,255,0.02);">
+                    <div style="font-size: 1.1em; color: #9ca3af;">Flat — <strong style="color:#e5e7eb;">{live.as_of_date}</strong> close. Await next entry signal.</div>
+                </div>""", unsafe_allow_html=True)
+
+        # (Removed lt-only hero: it duplicated “last closed trade” and could show a bogus SELL.)
 
         # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
@@ -523,7 +609,6 @@ def render():
                            showgrid=False, fixedrange=True),
                 showlegend=False,
             )
-            st.caption("Use Period above to change the time window — chart Y-axis matches that window.")
             st.plotly_chart(
                 eq_fig,
                 use_container_width=True,
@@ -996,11 +1081,11 @@ in a taxable account.""")
 """)
 
         st.markdown("### Sidebar Controls")
-        st.markdown("""
+        st.markdown(f"""
 - **Chart lookback** — How many days of price history to display (30-365)
 - **Bulls %** — Manually enter the latest AAII bullish sentiment percentage. When bulls
   exceed 60%, it triggers sell rule #8 as a secondary caution signal.
-- **Refresh Data** — Force a fresh fetch from Yahoo Finance (data caches for 4 hours)
+- **Refresh Data** — Clears caches and immediately re-fetches quotes **and** re-runs the V6 engine (same source for alerts and charts). Chart quote cache: {config.CACHE_EXPIRY_HOURS}h unless refreshed.
 """)
 
     # ══════════════════════════════════════════════════════════════
@@ -1054,7 +1139,6 @@ in a taxable account.""")
                     ),
                     xaxis=dict(gridcolor="rgba(255,255,255,0.04)", fixedrange=True),
                 )
-                st.caption("Use Period above to change the time window — chart Y-axis matches that window.")
                 st.plotly_chart(
                     eq_fig2,
                     use_container_width=True,

@@ -28,7 +28,7 @@ streamlit run app.py
 
 ## Data
 
-All market data is fetched from Yahoo Finance via `yfinance`. Data is cached for 4 hours. Click the refresh button in the sidebar to force a fresh fetch.
+The **V6 strategy engine** (alerts, equity curve, trade history) uses Yahoo Finance daily bars via `yfinance`, refreshed on a short interval (`STRATEGY_ENGINE_CACHE_SECONDS` in `config.py`, default 5 minutes). The **quote panel** uses `core/data.py` with a longer cache (default 4 hours) and may use TradingView when credentials are set — if so, top-of-page prices can differ slightly from the engine; trust the engine dates for signals. Use **Refresh Data** to force both paths to update immediately.
 
 ## Disclaimer
 

@@ -55,3 +55,5 @@ TQQQ_TYPICAL_SWING_PCT = 20.0  # Typical TQQQ swing = 20-30%
 # --- Data ---
 CACHE_EXPIRY_HOURS = 4
 LOOKBACK_DAYS = 365
+# Yahoo Finance daily bars for the V6 engine (must stay in sync with dashboard live state)
+STRATEGY_ENGINE_CACHE_SECONDS = 300
