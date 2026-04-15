@@ -5,25 +5,9 @@ Rules-based TQQQ buy/sell signal system.
 
 import datetime as dt
 from typing import List, Optional, Tuple
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
-
-_ET = ZoneInfo("America/New_York")
-
-
-def _price_bar_caption(bar_date: dt.date) -> str:
-    """Last row in daily feed = regular-session official close for that session date."""
-    return (
-        f"{bar_date.strftime('%b %d, %Y')} close · 4:00 PM ET (regular session)"
-    )
-
-
-def _quote_fetch_stamp() -> str:
-    """Wall-clock when this dataframe was materialized on the server (cache or fresh fetch)."""
-    now = dt.datetime.now(_ET)
-    return f"Snapshot · {now.strftime('%b %d, %Y %I:%M %p %Z')}"
 
 # Yahoo Finance–style equity chart ranges (daily backtest series)
 EQUITY_PERIOD_OPTIONS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "3Y", "5Y", "All"]
@@ -179,7 +163,6 @@ def render():
         return
 
     data_date = get_latest_date(tqqq)
-    qqq_bar_date = get_latest_date(qqq)
     tqqq_price = get_current_price(tqqq)
     qqq_price = get_current_price(qqq)
 
@@ -248,29 +231,15 @@ def render():
         REGIME_SHORT = {"Confirmed Uptrend": "Uptrend", "Uptrend Under Pressure": "Caution",
                         "Market in Correction": "Correction"}
         c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            st.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
-            st.caption(_price_bar_caption(data_date))
-        with c2:
-            st.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
-            st.caption(_price_bar_caption(qqq_bar_date))
+        c1.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
+        c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
         nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
         nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
         c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
         c4.metric("SPY", f"{sp_icon} {sp_short}")
-        st.caption(_quote_fetch_stamp())
-        st.caption(
-            f"Quote panel: last daily bar **{data_date.strftime('%b %d, %Y')}** "
-            f"(TradingView can be used for quotes if configured — strategy engine always uses Yahoo)."
-        )
-        if live and not using_json_fallback:
-            st.caption(
-                f"**Strategy / backtest (V6):** Yahoo daily bars through **{live.as_of_date}** close — same run as "
-                f"alerts, equity curve, and tables. Refreshes every {config.STRATEGY_ENGINE_CACHE_SECONDS // 60} minutes; "
-                f"**Refresh Data** forces both engine and quotes immediately."
-            )
+        st.caption(f"Data as of {data_date.strftime('%b %d, %Y')}")
 
         # Live action status
         qqq_close_val = float(qqq.iloc[-1]["Close"])
@@ -315,10 +284,7 @@ def render():
                     f"(TQQQ ≈ ${live.tqqq_close:,.2f}). Plan to execute at that close (or immediately after in AH)."
                 )
             elif live.in_position:
-                st.info(
-                    f"**HOLD** — Stay long. **No new buy/sell** at the **{live.as_of_date}** close. "
-                    f"Next evaluation: **following session’s close** (daily system — not intraday)."
-                )
+                st.info(f"**HOLD** — Long as of **{live.as_of_date}** close.")
             elif live.last_bar_action == "EXIT":
                 ex_px = live.last_exit_price if live.last_exit_price is not None else live.tqqq_close
                 st.error(
@@ -329,11 +295,6 @@ def render():
                 st.warning(
                     f"**STAY IN CASH** — Flat after **{live.as_of_date}** close. Wait for entry rules (FTD / MACD / 200d)."
                 )
-
-            st.caption(
-                "Signals use the **last completed daily bar** (not intraday). "
-                f"Engine cache: {config.STRATEGY_ENGINE_CACHE_SECONDS // 60} min — same source as charts below."
-            )
 
             if live.in_position:
                 pct_deployed = live.allocation_pct
