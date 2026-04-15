@@ -235,12 +235,14 @@ def render():
                                     font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
                             </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="background: #34d399; color: #0a0f1a; padding: 6px 18px;
-                                border-radius: 24px; font-size: 0.85em; font-weight: 800;
-                                letter-spacing: 0.05em;">IN POSITION</div>
-                            <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
-                                {days_in} days · {lt.signal_type} · {lt.shares:,.0f} shares</div>
+                        <div style="text-align: left; border-left: 1px solid rgba(255,255,255,0.06);
+                            padding-left: 16px;">
+                            <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                                letter-spacing: 0.08em;">Why</div>
+                            <div style="font-size: 0.85em; color: #d1d5db; margin-top: 4px; line-height: 1.5;">
+                                {'Weekly MACD crossed above zero on QQQ — bullish trend confirmed. QQQ above 200-day SMA.' if lt.signal_type == 'MACD' else ('Follow-Through Day: Nasdaq gained 1.25%+ on day 4+ of rally attempt after 7%+ correction.' if lt.signal_type == 'FTD' else 'QQQ above 200-day SMA — system defaults to invested in uptrend.')}</div>
+                            <div style="font-size: 0.72em; color: #6b7280; margin-top: 4px;">
+                                {days_in} days · {lt.shares:,.0f} shares</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
@@ -279,12 +281,14 @@ def render():
                                     font-family: 'JetBrains Mono', monospace;">{lt.duration_days}d</div>
                             </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="background: {act_color}; color: #0a0f1a; padding: 6px 18px;
-                                border-radius: 24px; font-size: 0.85em; font-weight: 800;
-                                letter-spacing: 0.05em;">CASH</div>
-                            <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
-                                {'Watching for entry' if qqq_above_200_now else 'Bear market'}</div>
+                        <div style="text-align: left; border-left: 1px solid rgba(255,255,255,0.06);
+                            padding-left: 16px;">
+                            <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
+                                letter-spacing: 0.08em;">Why</div>
+                            <div style="font-size: 0.85em; color: #d1d5db; margin-top: 4px; line-height: 1.5;">
+                                {'QQQ closed below 200-day SMA for 2 consecutive days — bear market confirmed.' if not qqq_above_200_now else ('12% trailing stop triggered — portfolio dropped from peak.' if lt.return_pct < -5 else 'QQQ broke below 200-day SMA — exited to protect capital.')}</div>
+                            <div style="font-size: 0.72em; color: #6b7280; margin-top: 4px;">
+                                {'Watching for re-entry signal' if qqq_above_200_now else 'Staying in cash until QQQ reclaims 200-day'}</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
