@@ -301,7 +301,7 @@ def render():
                     f"(TQQQ ≈ ${live.tqqq_close:,.2f}). Plan to execute at that close (or immediately after in AH)."
                 )
             elif live.in_position:
-                pass  # HOLD shown in main signal card only
+                pass  # Long status: Buy label in card only
             elif live.last_bar_action == "EXIT":
                 ex_px = live.last_exit_price if live.last_exit_price is not None else live.tqqq_close
                 st.error(
@@ -325,7 +325,8 @@ def render():
                             else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.'
                                   if live.signal_type == 'FTD'
                                   else 'System defaults to invested in uptrend.'))
-                main_lbl = "BUY" if live.last_bar_action == "ENTRY" else "HOLD"
+                # Long = last signal is Buy; entry date column shows actual fill date.
+                main_lbl = "Buy"
                 _gh = "font-size: 0.85em; color: #6b7280; text-transform: uppercase; line-height: 1.2;"
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
