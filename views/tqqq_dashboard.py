@@ -398,35 +398,46 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            # Compact equity chart — use range slider for zoom, Y auto-fits
+            # Equity chart — use range slider for zoom (Y auto-fits with slider)
             eq_dates = sorted(bt_equity.keys())
             eq_vals = [bt_equity[d] for d in eq_dates]
             eq_fig = go.Figure()
             eq_fig.add_trace(go.Scatter(
                 x=eq_dates, y=eq_vals,
                 mode="lines",
-                line=dict(color="#818cf8", width=2),
+                line=dict(color="#818cf8", width=2.5),
                 fill="tozeroy",
                 fillcolor="rgba(129,140,248,0.08)",
                 hovertemplate="<b>%{x|%b %d, %Y}</b><br>$%{y:,.0f}<extra></extra>",
             ))
             eq_fig.update_layout(
                 template="plotly_dark",
-                height=260,
+                height=380,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(10,15,26,1)",
-                yaxis=dict(gridcolor="rgba(255,255,255,0.03)",
+                yaxis=dict(gridcolor="rgba(255,255,255,0.04)",
                            tickprefix="$", tickformat=",",
                            showgrid=True, zeroline=False),
                 xaxis=dict(gridcolor="rgba(255,255,255,0.03)",
                            showgrid=False,
-                           rangeslider=dict(visible=True, thickness=0.05)),
+                           rangeslider=dict(visible=True, thickness=0.08),
+                           rangeselector=dict(
+                               buttons=[
+                                   dict(count=1, label="1Y", step="year", stepmode="backward"),
+                                   dict(count=3, label="3Y", step="year", stepmode="backward"),
+                                   dict(count=5, label="5Y", step="year", stepmode="backward"),
+                                   dict(step="all", label="All"),
+                               ],
+                               bgcolor="rgba(255,255,255,0.03)",
+                               activecolor="rgba(99,102,241,0.2)",
+                               font=dict(color="#9ca3af", size=11),
+                               x=0, y=1.05,
+                           )),
                 showlegend=False,
-                dragmode="zoom",
             )
             st.plotly_chart(eq_fig, use_container_width=True,
-                            config={"displayModeBar": False, "scrollZoom": True})
+                            config={"displayModeBar": False})
 
         # (Last Trade + Allocation moved to top)
 
