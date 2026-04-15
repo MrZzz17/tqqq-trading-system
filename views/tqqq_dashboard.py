@@ -240,13 +240,8 @@ def render():
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
         c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
         c4.metric("SPY", f"{sp_icon} {sp_short}")
-        _et = ZoneInfo("America/New_York")
-        _loaded_et = dt.datetime.now(_et).strftime("%I:%M %p ET")
-        st.caption(
-            f"Daily Yahoo bars (delayed, not a live tick feed) — last bar **{data_date.strftime('%b %d, %Y')}** "
-            f"(regular session close ≈ 4:00 PM ET). This page loaded **{_loaded_et}**. "
-            f"Prices refetch at most every **{config.CACHE_EXPIRY_HOURS}h**; use sidebar **Refresh Data** to pull immediately."
-        )
+        _loaded_et = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M %p ET")
+        st.caption(f"Data as of {data_date.strftime('%b %d, %Y')} · {_loaded_et}")
 
         # Live action status
         qqq_close_val = float(qqq.iloc[-1]["Close"])
