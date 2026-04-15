@@ -20,10 +20,14 @@ BLUE = "#818cf8"
 def build_tqqq_chart(
     df: pd.DataFrame,
     swings: Optional[List[SwingPoint]] = None,
-    lookback_days: int = 120,
+    lookback_days: Optional[int] = None,
 ) -> go.Figure:
-    # Use ALL data so zooming out reveals more history
-    plot_df = df
+    plot_df = df if df is not None and not df.empty else pd.DataFrame()
+    if plot_df.empty:
+        fig = go.Figure()
+        fig.update_layout(template="plotly_dark", height=400, paper_bgcolor="rgba(0,0,0,0)",
+                          plot_bgcolor=BG_COLOR, annotations=[dict(text="No data", showarrow=False)])
+        return fig
 
     fig = make_subplots(
         rows=2, cols=1,
@@ -97,30 +101,42 @@ def build_tqqq_chart(
                     hovertext=f"{s.point_type.title()}: ${s.price:.2f}<br>{s.pct_move:+.1f}% | {s.trading_days}d",
                 ), row=1, col=1)
 
-    # Set default visible range to lookback_days, but allow zooming to see all data
-    if len(plot_df) > lookback_days:
+    x_start = plot_df.index[0]
+    x_end = plot_df.index[-1]
+    if lookback_days is not None and len(plot_df) > lookback_days:
         x_start = plot_df.index[-lookback_days]
-        x_end = plot_df.index[-1]
-    else:
-        x_start = plot_df.index[0]
-        x_end = plot_df.index[-1]
 
     fig.update_layout(
         template="plotly_dark",
-        height=600,
+        height=480,
         margin=dict(l=10, r=10, t=30, b=10),
-        xaxis=dict(
-            range=[x_start, x_end],
-            gridcolor=GRID_COLOR,
-        ),
-        yaxis=dict(gridcolor=GRID_COLOR, autorange=True),
-        yaxis2=dict(gridcolor=GRID_COLOR),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
             font=dict(color="#9ca3af", size=11),
         ),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor=BG_COLOR,
+        plot_bgcolor="rgba(10,15,26,1)",
+    )
+    fig.update_xaxes(
+        range=[x_start, x_end],
+        showgrid=False,
+        gridcolor="rgba(255,255,255,0.03)",
+        fixedrange=True,
+        zeroline=False,
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.04)",
+        zeroline=False,
+        fixedrange=True,
+        row=1, col=1,
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor="rgba(255,255,255,0.04)",
+        zeroline=False,
+        fixedrange=True,
+        row=2, col=1,
     )
 
     return fig

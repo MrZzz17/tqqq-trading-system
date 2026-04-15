@@ -39,6 +39,22 @@ def _equity_cutoff_date(period: str, last_d: dt.date, first_d: dt.date) -> Optio
     return first_d
 
 
+def _filter_tqqq_by_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
+    """Slice TQQQ OHLCV to the same windows as the equity chart Period control."""
+    if df is None or df.empty:
+        return df
+    last_d = pd.Timestamp(df.index[-1]).date()
+    first_d = pd.Timestamp(df.index[0]).date()
+    cutoff = _equity_cutoff_date(period, last_d, first_d)
+    if cutoff is None:
+        return df
+    sub = df.loc[df.index >= pd.Timestamp(cutoff)]
+    if sub.empty:
+        n = min(60, len(df))
+        return df.iloc[-n:].copy()
+    return sub.copy()
+
+
 def _filter_equity_series(bt_equity: dict, period: str) -> Tuple[List, List[float]]:
     """Sorted dates and values for the selected period (falls back if slice is empty)."""
     eq_dates = sorted(bt_equity.keys())
@@ -63,10 +79,7 @@ from core.data import (
     get_52_week_high, get_current_price, get_latest_date,
 )
 from core.indicators import detect_market_regime
-from core.signals import (
-    detect_follow_through_day, detect_three_white_knights,
-    check_all_sell_signals, compute_alert_level,
-)
+from core.signals import detect_follow_through_day
 from core.swing_tracker import detect_swings
 from core.charts import build_tqqq_chart
 from core.backtest import (
@@ -110,7 +123,6 @@ def _load_backtest_json_fallback():
         return [], {}
 
 
-SEVERITY_ICONS = {"watch": "👀", "warning": "⚠️", "sell": "🔴"}
 REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 
@@ -181,7 +193,6 @@ def render():
         """, unsafe_allow_html=True)
         st.markdown("---")
         st.markdown("##### Settings")
-        chart_lookback = st.slider("Chart lookback (days)", 30, 365, 120)
         bulls_pct = st.number_input(
             "Bulls % (AAII sentiment)",
             min_value=0.0, max_value=100.0, value=0.0, step=1.0,
@@ -951,13 +962,29 @@ def render():
                 <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">SAFETY</span>
             </div>""", unsafe_allow_html=True)
 
-        # Chart
+        # Chart (same Period control + styling as equity curve above)
         st.markdown("### TQQQ Price Chart")
+        tqqq_period = st.segmented_control(
+            "Period",
+            options=EQUITY_PERIOD_OPTIONS,
+            default="All",
+            key="tqqq_price_period",
+        ) or "All"
+        tqqq_chart_df = _filter_tqqq_by_period(tqqq, tqqq_period)
         year_now = dt.datetime.now().year
-        swings = detect_swings(tqqq, min_move_pct=5.0, year_filter=year_now - 1)
-        fig = build_tqqq_chart(tqqq, swings=swings, lookback_days=chart_lookback)
-        st.plotly_chart(fig, key="main_chart", use_container_width=True,
-                        config={"scrollZoom": True})
+        swings_all = detect_swings(tqqq, min_move_pct=5.0, year_filter=year_now - 1)
+        if tqqq_chart_df is not None and len(tqqq_chart_df) > 0:
+            t0, t1 = tqqq_chart_df.index[0], tqqq_chart_df.index[-1]
+            swings = [s for s in swings_all if s.date >= t0 and s.date <= t1]
+        else:
+            swings = swings_all
+        fig = build_tqqq_chart(tqqq_chart_df, swings=swings, lookback_days=None)
+        st.plotly_chart(
+            fig,
+            key="main_chart",
+            use_container_width=True,
+            config={"scrollZoom": False, "displayModeBar": False},
+        )
 
         # MA Table
         latest = tqqq.iloc[-1]
@@ -1132,41 +1159,43 @@ in a taxable account.""")
 
         st.markdown("### Daily Routine (30 seconds)")
         st.markdown("""
-1. **Check the alert bar** at the top — it tells you the overall risk level
-   (CLEAR → WATCH → ELEVATED → HIGH → CRITICAL → FULL EXIT)
-2. **Glance at the sell signal scoreboard** — how many of the 9 rules are triggered?
-3. **Check the market regime** — Is the Nasdaq in a "Confirmed Uptrend" (green light to buy)
-   or "Market in Correction" (stay in cash)?
-4. If all clear, **no action needed**. If signals are firing, consider trimming per the rules.
+1. **Top row** — TQQQ / QQQ prices and the **Nasdaq** & **SPY** tiles. Those show a short **market pulse**
+   (**Uptrend** / **Caution** / **Correction**) from distribution-day count and price vs 50/200-day MAs — same idea as
+   IBD-style “Confirmed Uptrend” vs “Market in Correction,” in compact labels.
+2. **Position card** (when relevant) — Live **Buy / Sell / Flat** from the V6 engine on the last daily close.
+3. **System Signals** — **Follow-Through Day**, **Weekly MACD** on QQQ, and **QQQ vs 200-day** (entry context).
+   Below that, **200-day exit**, **12% trailing stop**, and **crash detector** mirror major risk rules.
+4. **Market Health** — QQQ/SPY detail plus **Strong Bull** / weekly MACD context. Use **TQQQ Price Chart**
+   (same **Period** control as the equity curve) and the **Moving Average Positioning** table to see price vs MAs.
 """)
 
         st.markdown("### Weekly Routine (15 minutes)")
         st.markdown("""
-1. **Review the swing tracker** — Where are we in the current swing? How far from the last
-   trough or peak?
-2. **Check distribution days** — Are they clustering? Is the count approaching 4-5?
-3. **Review the chart** — Is TQQQ above or below key moving averages?
-4. **Update the Bulls % in the sidebar** — Check [AAII Sentiment Survey](https://www.aaii.com/sentimentsurvey)
-   for the latest reading and enter it in the sidebar.
+1. **Swings** — Triangles on the **TQQQ chart** mark recent swing highs/lows; relate them to the MA table.
+2. **Regime & distribution** — The **Nasdaq** pulse tile reflects clustering of distribution days (warn/critical
+   thresholds are built into that logic). For detail, see *How the System Works* → distribution days.
+3. **Chart & MAs** — Same as daily: TQQQ vs 10/21/50/200 and “from peak” on the health cards.
+4. **Bulls %** — Optional: enter the latest [AAII](https://www.aaii.com/sentimentsurvey) bullish % in the sidebar if you track sentiment
+   (used when you want that input for froth checks elsewhere in your workflow).
 """)
 
         st.markdown("### Reading the Dashboard")
         st.markdown("""
-| Section | What It Tells You | Action |
-|---------|-------------------|--------|
-| **Alert Bar** | Overall risk level based on all 9 sell rules | Green = hold. Yellow = watch. Red = sell. |
-| **Buy Signals** | Whether FTD or 3WK patterns have appeared | If active, consider entering TQQQ |
-| **Sell Scoreboard** | Which specific sell rules are triggered | Trim 10% per triggered signal |
-| **Price Chart** | TQQQ with moving averages and swing points | Visual confirmation of signals |
-| **MA Table** | Distance from each key moving average | Below 21-EMA is danger zone |
+| Section | What it tells you |
+|---------|-------------------|
+| **Top row** | Last prices; **Nasdaq / SPY pulse** (uptrend vs stress vs correction) |
+| **Hero & equity chart** | Strategy backtest value and cumulative equity (same **Period** presets as TQQQ chart) |
+| **Market Health** | QQQ & SPY vs MAs; **Strong Bull** / weekly MACD definitions |
+| **System Signals** | FTD, weekly MACD, QQQ vs 200-day — **entries**; next row: 200d exit, 12% trail, crash — **risk** |
+| **TQQQ chart** | Candles, MAs, volume, swing markers — use **Period** to zoom |
+| **MA table** | Distance from 10/21/50/200 — “danger zone” framing is informal, not a hard rule |
 """)
 
         st.markdown("### Sidebar Controls")
         st.markdown(f"""
-- **Chart lookback** — How many days of price history to display (30-365)
-- **Bulls %** — Manually enter the latest AAII bullish sentiment percentage. When bulls
-  exceed 60%, it triggers sell rule #8 as a secondary caution signal.
-- **Refresh Data** — Clears caches and immediately re-fetches quotes **and** re-runs the V6 engine (same source for alerts and charts). Chart quote cache: {config.CACHE_EXPIRY_HOURS}h unless refreshed.
+- **TQQQ chart Period** — Same ranges as the equity curve (1D … All)
+- **Bulls %** — Optional AAII bullish % for your own tracking (not fed into the on-page tiles; strategy cards use Yahoo data + V6 engine only).
+- **Refresh Data** — Clears caches and immediately re-fetches quotes **and** re-runs the V6 engine. Quote cache TTL: {config.CACHE_EXPIRY_HOURS}h unless refreshed.
 """)
 
     # ══════════════════════════════════════════════════════════════
