@@ -239,10 +239,9 @@ def render():
                             padding-left: 16px; max-width: 280px;">
                             <div style="font-size: 0.7em; color: #6b7280; text-transform: uppercase;
                                 letter-spacing: 0.08em;">Why</div>
-                            <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.5; font-weight: 600;">
-                                {'Weekly MACD crossed above zero — bullish trend confirmed.' if lt.signal_type == 'MACD' else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.' if lt.signal_type == 'FTD' else 'System defaults to invested in uptrend.')}</div>
-                            <div style="font-size: 0.88em; color: #9ca3af; margin-top: 4px;">
-                                QQQ above 200-day SMA.</div>
+                            <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
+                                {'Weekly MACD crossed above zero — bullish trend confirmed.' if lt.signal_type == 'MACD' else ('Follow-Through Day — Nasdaq gained 1.25%+ on day 4+ of rally.' if lt.signal_type == 'FTD' else 'System defaults to invested in uptrend.')}
+                                <br>QQQ above 200-day SMA.</div>
                             <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
                                 {days_in} days · {lt.shares:,.0f} shares</div>
                         </div>
