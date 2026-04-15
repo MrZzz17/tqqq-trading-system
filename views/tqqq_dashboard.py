@@ -944,6 +944,7 @@ in a taxable account.""")
                     yaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         tickprefix="$", tickformat=",",
+                        autorange=True, fixedrange=False,
                     ),
                     xaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
@@ -964,11 +965,6 @@ in a taxable account.""")
                         ),
                     ),
                     dragmode="zoom",
-                    yaxis=dict(
-                        gridcolor="rgba(255,255,255,0.04)",
-                        tickprefix="$", tickformat=",",
-                        autorange=True, fixedrange=False,
-                    ),
                 )
                 eq_fig.update_xaxes(
                     rangeslider_bgcolor="rgba(255,255,255,0.02)",
