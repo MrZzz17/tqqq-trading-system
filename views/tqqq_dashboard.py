@@ -312,16 +312,13 @@ def render():
                 st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;">
-                    <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
+                    <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr minmax(0, 1.5fr); gap: 10px; align-items: center;">
                         <div style="text-align: center; padding-right: 10px;">
                             <div style="font-size: 3em; font-weight: 900; color: #34d399;
                                 letter-spacing: -0.02em; line-height: 1;">{main_lbl}</div>
                             <div style="font-size: 0.75em; color: #6b7280; margin-top: 4px;">As of close</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">{live.as_of_date}</div>
-                            <div style="font-size: 0.72em; color: #6b7280; margin-top: 8px;">Entry date</div>
-                            <div style="font-size: 1.0em; font-weight: 600; color: #e5e7eb;
-                                font-family: 'JetBrains Mono', monospace;">{live.entry_date}</div>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
@@ -334,6 +331,12 @@ def render():
                                 font-family: 'JetBrains Mono', monospace;">${live.entry_price:.2f}</div>
                         </div>
                         <div style="text-align: center;">
+                            <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Entry date</div>
+                            <div style="font-size: 1.05em; font-weight: 600; color: #e5e7eb;
+                                font-family: 'JetBrains Mono', monospace;">{live.entry_date or "—"}</div>
+                            <div style="font-size: 0.82em; color: #9ca3af; margin-top: 6px;">4:00 PM ET</div>
+                        </div>
+                        <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Now</div>
                             <div style="font-size: 1.4em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
@@ -344,7 +347,7 @@ def render():
                                 font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
                         </div>
                         <div style="border-left: 2px solid rgba(52,211,153,0.3);
-                            padding-left: 16px;">
+                            padding-left: 16px; min-width: 0;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                                 letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
