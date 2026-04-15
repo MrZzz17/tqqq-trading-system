@@ -229,10 +229,20 @@ def render():
         sp_regime = detect_market_regime(sp500)
         tqqq_delta = (tqqq.iloc[-1]['Close'] - tqqq.iloc[-2]['Close']) / tqqq.iloc[-2]['Close'] * 100
         qqq_delta = (qqq.iloc[-1]['Close'] - qqq.iloc[-2]['Close']) / qqq.iloc[-2]['Close'] * 100
+        if live:
+            try:
+                _ld_ts = pd.Timestamp(live.as_of_date)
+                sub = tqqq.loc[:_ld_ts]
+                if len(sub) >= 2:
+                    tqqq_delta = ((float(sub.iloc[-1]["Close"]) - float(sub.iloc[-2]["Close"]))
+                                  / float(sub.iloc[-2]["Close"]) * 100)
+            except Exception:
+                pass
         REGIME_SHORT = {"Confirmed Uptrend": "Uptrend", "Uptrend Under Pressure": "Caution",
                         "Market in Correction": "Correction"}
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("TQQQ", f"${tqqq_price:.2f}", delta=f"{tqqq_delta:+.2f}%")
+        _tqqq_show = float(live.tqqq_close) if live else tqqq_price
+        c1.metric("TQQQ", f"${_tqqq_show:.2f}", delta=f"{tqqq_delta:+.2f}%")
         c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
         nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
@@ -241,7 +251,11 @@ def render():
         c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
         c4.metric("SPY", f"{sp_icon} {sp_short}")
         _loaded_et = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M %p ET")
-        st.caption(f"Data as of {data_date.strftime('%b %d, %Y')} · {_loaded_et}")
+        if live:
+            _bar_d = dt.datetime.strptime(live.as_of_date, "%Y-%m-%d").date().strftime("%b %d, %Y")
+        else:
+            _bar_d = data_date.strftime("%b %d, %Y")
+        st.caption(f"{_bar_d} close · loaded {_loaded_et}")
 
         # Live action status
         qqq_close_val = float(qqq.iloc[-1]["Close"])
@@ -300,7 +314,7 @@ def render():
                 ed_live = (dt.datetime.strptime(live.entry_date, "%Y-%m-%d").date()
                            if live.entry_date else None)
                 days_in = (dt.date.today() - ed_live).days if ed_live else 0
-                unrealized = ((tqqq_price - live.entry_price) / live.entry_price * 100) if live.entry_price > 0 else 0
+                unrealized = ((_tqqq_show - live.entry_price) / live.entry_price * 100) if live.entry_price > 0 else 0
                 unr_color = "#34d399" if unrealized >= 0 else "#f87171"
                 why_text = ('Weekly MACD crossed above zero — bullish trend confirmed.'
                             if live.signal_type == 'MACD'
@@ -343,7 +357,7 @@ def render():
                         </div>
                         <div style="grid-column: 5; grid-row: 2; text-align: center;">
                             <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
+                                font-family: 'JetBrains Mono', monospace;">${_tqqq_show:.2f}</div>
                         </div>
                         <div style="grid-column: 6; grid-row: 2; text-align: center;">
                             <div style="font-size: 1.4em; font-weight: 800; color: {unr_color};
