@@ -332,11 +332,16 @@ def render():
                     padding: 20px 24px; background: linear-gradient(135deg, {act_color}08, rgba(255,255,255,0.02));
                     margin: 8px 0 16px 0;">
                     <div style="display: grid; grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
-                        <div style="text-align: center; padding-right: 10px;">
+                        <div style="text-align: center; padding-right: 10px; min-width: 120px;">
                             <div style="font-size: 2.8em; font-weight: 900; color: {act_color};
                                 letter-spacing: -0.02em; line-height: 1;">SELL</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
                                 font-family: 'JetBrains Mono', monospace;">{lt.exit_date}</div>
+                            <div style="font-size: 0.72em; color: #6b7280; text-transform: uppercase; margin-top: 10px;">Sell price</div>
+                            <div style="font-size: 1.25em; font-weight: 700; color: #f0f0f0;
+                                font-family: 'JetBrains Mono', monospace;">${lt.exit_price:.2f}</div>
+                            <div style="font-size: 0.72em; color: #6b7280; text-transform: uppercase; margin-top: 8px;">Sell time</div>
+                            <div style="font-size: 0.82em; color: #9ca3af; line-height: 1.35;">4:00 PM ET<br><span style="color:#6b7280;font-size:0.9em;">Regular close (modeled)</span></div>
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;">Position</div>
@@ -371,6 +376,12 @@ def render():
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
+                st.caption(
+                    "Execution model: entries and exits use the **official daily closing price** on that date "
+                    "(after-hours fills), not the next session’s open. The dashboard shows SELL when the last trade "
+                    "in the backtest is **closed** — often right after the data updates for a new day, not because "
+                    "we sold at the open."
+                )
 
         # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
