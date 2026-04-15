@@ -240,16 +240,55 @@ def render():
                 pass
         REGIME_SHORT = {"Confirmed Uptrend": "Uptrend", "Uptrend Under Pressure": "Caution",
                         "Market in Correction": "Correction"}
-        c1, c2, c3, c4 = st.columns(4)
         _tqqq_show = float(live.tqqq_close) if live else tqqq_price
-        c1.metric("TQQQ", f"${_tqqq_show:.2f}", delta=f"{tqqq_delta:+.2f}%")
-        c2.metric("QQQ", f"${qqq_price:.2f}", delta=f"{qqq_delta:+.2f}%")
         nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
         nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
-        c3.metric("Nasdaq", f"{nq_icon} {nq_short}")
-        c4.metric("SPY", f"{sp_icon} {sp_short}")
+
+        def _pct_pill(v: float) -> str:
+            up = v >= 0
+            col, bg = ("#34d399", "rgba(52,211,153,0.14)") if up else ("#f87171", "rgba(248,113,113,0.14)")
+            ar = "↑" if up else "↓"
+            return (
+                f'<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:0.82em;'
+                f'font-weight:600;background:{bg};color:{col};">{ar} {v:+.2f}%</span>'
+            )
+
+        _mc = (
+            "min-height:122px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;"
+            "padding:12px 14px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;"
+        )
+        _ml = "font-size:0.78em;color:#6b7280;text-transform:uppercase;letter-spacing:0.06em;"
+        _mv = (
+            "flex:1;display:flex;align-items:center;min-height:0;font-size:1.65em;font-weight:700;"
+            "color:#f0f0f0;font-family:'JetBrains Mono',monospace;"
+        )
+        _mf = "min-height:36px;display:flex;align-items:flex-end;flex-shrink:0;"
+        st.markdown(f"""
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:2px;">
+  <div style="{_mc}">
+    <div style="{_ml}">TQQQ</div>
+    <div style="{_mv}">${_tqqq_show:.2f}</div>
+    <div style="{_mf}">{_pct_pill(tqqq_delta)}</div>
+  </div>
+  <div style="{_mc}">
+    <div style="{_ml}">QQQ</div>
+    <div style="{_mv}">${qqq_price:.2f}</div>
+    <div style="{_mf}">{_pct_pill(qqq_delta)}</div>
+  </div>
+  <div style="{_mc}">
+    <div style="{_ml}">Nasdaq</div>
+    <div style="{_mv}"><span style="font-family:inherit;">{nq_icon} {nq_short}</span></div>
+    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
+  </div>
+  <div style="{_mc}">
+    <div style="{_ml}">SPY</div>
+    <div style="{_mv}"><span style="font-family:inherit;">{sp_icon} {sp_short}</span></div>
+    <div style="{_mf}"><span style="opacity:0;font-size:0.82em;">—</span></div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
         _loaded_et = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M %p ET")
         _today_et = dt.datetime.now(ZoneInfo("America/New_York")).date()
         if live:
