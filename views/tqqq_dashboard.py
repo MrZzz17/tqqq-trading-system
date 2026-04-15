@@ -256,9 +256,9 @@ def render():
             )
 
         _mc = (
-            "min-height:148px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;"
-            "padding:14px 12px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;"
-            "align-items:center;justify-content:center;text-align:center;box-sizing:border-box;"
+            "border:1px solid rgba(255,255,255,0.08);border-radius:12px;"
+            "padding:6px 10px 8px 10px;background:rgba(255,255,255,0.02);display:flex;flex-direction:column;"
+            "align-items:center;justify-content:flex-start;text-align:center;box-sizing:border-box;"
         )
         _ml = "font-size:0.95em;color:#9ca3af;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;"
         _mval = (
@@ -268,7 +268,7 @@ def render():
         _mreg = "font-size:1.95em;font-weight:800;color:#f0f0f0;line-height:1.2;"
         _mrow_px = (
             "display:flex;flex-direction:row;align-items:center;justify-content:center;"
-            "gap:14px;margin-top:10px;flex-wrap:wrap;width:100%;"
+            "gap:14px;margin-top:4px;flex-wrap:wrap;width:100%;"
         )
         st.markdown(f"""
 <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:2px;">
@@ -288,11 +288,11 @@ def render():
   </div>
   <div style="{_mc}">
     <div style="{_ml}">Nasdaq</div>
-    <div style="{_mreg};margin-top:10px;"><span style="font-family:inherit;">{nq_icon} {nq_short}</span></div>
+    <div style="{_mreg};margin-top:4px;"><span style="font-family:inherit;">{nq_icon} {nq_short}</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">SPY</div>
-    <div style="{_mreg};margin-top:10px;"><span style="font-family:inherit;">{sp_icon} {sp_short}</span></div>
+    <div style="{_mreg};margin-top:4px;"><span style="font-family:inherit;">{sp_icon} {sp_short}</span></div>
   </div>
 </div>
 """, unsafe_allow_html=True)
