@@ -184,12 +184,23 @@ def render():
         w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
         macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
 
+        # Check if last trade was a sell (we're currently flat)
+        last_was_sell = lt and lt.outcome in ("Win", "Loss")  # all completed trades end with a sell
+
         if qqq_above_200_now and macd_pos_now:
-            act_text = "BE INVESTED — QQQ above 200d + MACD positive. Hold 100% TQQQ."
-            act_color = "#34d399"; act_icon = "✅"
+            if last_was_sell:
+                act_text = "NEW ENTRY SIGNAL — QQQ above 200d + MACD positive. Buy TQQQ at 100%."
+                act_color = "#818cf8"; act_icon = "🔵"
+            else:
+                act_text = "BE INVESTED — QQQ above 200d + MACD positive. Hold 100% TQQQ."
+                act_color = "#34d399"; act_icon = "✅"
         elif qqq_above_200_now:
-            act_text = "CAUTION — QQQ above 200d but MACD negative. Hold 50% TQQQ."
-            act_color = "#fbbf24"; act_icon = "⚠️"
+            if last_was_sell:
+                act_text = "NEW ENTRY SIGNAL (CAUTIOUS) — QQQ above 200d but MACD negative. Buy TQQQ at 50%."
+                act_color = "#fbbf24"; act_icon = "⚠️"
+            else:
+                act_text = "CAUTION — QQQ above 200d but MACD negative. Hold 50% TQQQ."
+                act_color = "#fbbf24"; act_icon = "⚠️"
         else:
             act_text = "STAY OUT — QQQ below 200-day SMA. Cash or SGOV only."
             act_color = "#f87171"; act_icon = "🔴"
