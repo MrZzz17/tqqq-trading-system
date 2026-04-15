@@ -284,7 +284,7 @@ def render():
                     f"(TQQQ ≈ ${live.tqqq_close:,.2f}). Plan to execute at that close (or immediately after in AH)."
                 )
             elif live.in_position:
-                st.info(f"**HOLD** — Long as of **{live.as_of_date}** close.")
+                pass  # HOLD shown in main signal card only
             elif live.last_bar_action == "EXIT":
                 ex_px = live.last_exit_price if live.last_exit_price is not None else live.tqqq_close
                 st.error(
