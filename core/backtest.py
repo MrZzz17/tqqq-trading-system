@@ -76,6 +76,44 @@ class YearResult:
     starting_value: float = 0.0
     ending_value: float = 0.0
     max_drawdown_pct: float = 0.0
+    # Set in get_dashboard_state when still long at last bar — not a closed round-trip in .trades
+    open_leg: Optional[dict] = None
+
+
+def _normalize_date_str(s: str) -> str:
+    return (s or "").strip()[:10]
+
+
+def _attach_open_leg_to_results(snap: Optional[LiveSnapshot], results: List[YearResult]) -> None:
+    """Tag the year row with open-position metadata so UIs can list the entry before exit exists."""
+    if not snap or not snap.entry_date:
+        return
+    has_pos = bool(snap.in_position) or float(snap.shares or 0) > 1e-6
+    if not has_pos:
+        return
+    ent = _normalize_date_str(snap.entry_date)
+    if len(ent) < 10:
+        return
+    try:
+        y = int(ent[:4])
+    except ValueError:
+        return
+    for r in results:
+        if r.year != y:
+            continue
+        closed_entries = {_normalize_date_str(t.entry_date) for t in r.trades}
+        if ent in closed_entries:
+            continue
+        r.open_leg = {
+            "entry_date": ent,
+            "signal_type": snap.signal_type or "Entry",
+            "entry_price": snap.entry_price,
+            "shares": snap.shares,
+            "as_of_date": snap.as_of_date,
+            "allocation_pct": snap.allocation_pct,
+            "portfolio_value": snap.portfolio_value,
+        }
+        return
 
 
 # ── Data ──────────────────────────────────────────────────────────
@@ -147,10 +185,12 @@ def _find_ftd_signal(nasdaq, idx):
 def _run_continuous(start_year: int, end_year: int, finalize_open_position: bool = True):
     fetch_start = f"{start_year - 2}-01-01"
     end_dt = min(dt.date(end_year, 12, 31), dt.date.today())
+    # yfinance daily `end` is exclusive — without +1 day the last row is always the prior session
+    fetch_end = end_dt + dt.timedelta(days=1)
 
-    tqqq = _fetch("TQQQ", fetch_start, end_dt.strftime("%Y-%m-%d"))
-    qqq = _fetch("QQQ", fetch_start, end_dt.strftime("%Y-%m-%d"))
-    nasdaq = _fetch("^IXIC", fetch_start, end_dt.strftime("%Y-%m-%d"))
+    tqqq = _fetch("TQQQ", fetch_start, fetch_end.strftime("%Y-%m-%d"))
+    qqq = _fetch("QQQ", fetch_start, fetch_end.strftime("%Y-%m-%d"))
+    nasdaq = _fetch("^IXIC", fetch_start, fetch_end.strftime("%Y-%m-%d"))
 
     if tqqq.empty or qqq.empty or nasdaq.empty:
         return {}, {}, pd.DataFrame(), pd.DataFrame(), None
@@ -439,10 +479,11 @@ def run_all_backtests():
 
 
 @st.cache_data(ttl=config.STRATEGY_ENGINE_CACHE_SECONDS, show_spinner=False)
-def get_dashboard_state() -> Tuple[Optional[LiveSnapshot], List[YearResult], Dict]:
+def get_dashboard_state(_cache_bust: int = 3) -> Tuple[Optional[LiveSnapshot], List[YearResult], Dict]:
     """Single V6 engine run: same data as live alerts, charts, and trade lists.
 
     No end-of-series synthetic exit (finalize_open_position=False). Cached together with _fetch.
+    Bump _cache_bust when YearResult shape or attach logic changes (invalidates Streamlit cache).
     """
     current_year = dt.date.today().year
     equity, trades_by_year, tqqq, qqq, snap = _run_continuous(
@@ -455,6 +496,7 @@ def get_dashboard_state() -> Tuple[Optional[LiveSnapshot], List[YearResult], Dic
         r = _build_year_result(year, equity, trades_by_year.get(year, []), tqqq, qqq)
         if r:
             results.append(r)
+    _attach_open_leg_to_results(snap, results)
     return snap, results, equity
 
 

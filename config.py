@@ -57,3 +57,6 @@ CACHE_EXPIRY_HOURS = 4
 LOOKBACK_DAYS = 365
 # Yahoo Finance daily bars for the V6 engine (must stay in sync with dashboard live state)
 STRATEGY_ENGINE_CACHE_SECONDS = 300
+
+# Shown on Market Health — bump when that panel changes (confirms deploy picked up UI)
+DASHBOARD_MARKET_HEALTH_REV = "2026-04-16b"

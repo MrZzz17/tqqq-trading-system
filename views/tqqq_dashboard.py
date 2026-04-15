@@ -758,9 +758,6 @@ def render():
         macd_val = float(w_macd) if w_macd is not None and not pd.isna(w_macd) else None
         macd_sig_val = float(w_macd_sig) if w_macd_sig is not None and not pd.isna(w_macd_sig) else None
 
-        exit_mode = ("Wide exit (QQQ 50-day SMA)" if (golden and above_200)
-                     else ("Tight exit (QQQ 21-EMA)" if above_200 else "No positions"))
-
         macd_color = "#17BF63" if (macd_val and macd_val > 0) else "#E0245E"
         macd_label = "Bullish" if (macd_val and macd_val > 0) else "Bearish"
         macd_trend = "Rising" if (macd_val and macd_sig_val and macd_val > macd_sig_val) else "Falling"
@@ -768,12 +765,29 @@ def render():
         # Tile accent — keyed by regime_str only (avoids NameError if regime_color ever missing)
         _tile_rc = {"Strong Bull": "#17BF63", "Bull": "#FFAD1F", "Bear": "#E0245E"}.get(regime_str, "#657786")
 
-        st.markdown(f"""<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        if golden and above_200:
+            _strong_bull_status = "Regime now: Strong Bull (both QQQ conditions met)."
+        elif above_200:
+            _strong_bull_status = (
+                "Regime now: Bull — above 200-day; 50-day not above 200-day yet."
+            )
+        else:
+            _strong_bull_status = "Regime now: Bear — QQQ below 200-day SMA."
+
+        _macd_expl = (
+            "Bullish" if (macd_val and macd_val > 0) else "Bearish"
+        )
+        _macd_now = (
+            f"Weekly MACD now: {_macd_expl} (MACD {'&gt; 0' if macd_val and macd_val > 0 else '≤ 0'})."
+            if macd_val is not None
+            else "Weekly MACD: N/A (insufficient data)."
+        )
+
+        st.markdown(f"""<div data-market-health-rev="{config.DASHBOARD_MARKET_HEALTH_REV}" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
             <div style="border: 1px solid {_tile_rc}33; border-radius: 12px; padding: 14px;
                 background: {_tile_rc}08; text-align: center;">
                 <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Market Regime</div>
                 <div style="font-size: 1.4em; font-weight: 800; color: {_tile_rc};">{regime_str}</div>
-                <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{exit_mode}</div>
             </div>
             <div style="border: 1px solid {macd_color}33; border-radius: 12px; padding: 14px;
                 background: {macd_color}08; text-align: center;">
@@ -781,10 +795,24 @@ def render():
                 <div style="font-size: 1.4em; font-weight: 800; color: {macd_color};">{macd_label}</div>
                 <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{macd_trend} · {macd_val:+.1f}</div>
             </div>
-            <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 14px;
-                background: rgba(29,161,242,0.03); text-align: center;">
-                <div style="font-size: 0.82em; color: #8899A6; text-transform: uppercase;">Exit Strategy</div>
-                <div style="font-size: 1.1em; font-weight: 600; color: #E7E9EA; margin-top: 6px;">{exit_desc}</div>
+            <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 14px 16px;
+                background: rgba(29,161,242,0.03); text-align: left;">
+                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase; text-align: center;">
+                    How regime &amp; MACD are set · {config.DASHBOARD_MARKET_HEALTH_REV}</div>
+                <div style="font-size: 0.82em; color: #cbd5e1; margin-top: 10px; line-height: 1.45;">
+                    <strong style="color: #E7E9EA;">Strong Bull</strong> — last <strong>QQQ</strong> daily close
+                    <strong>above</strong> the 200-day SMA <em>and</em> 50-day SMA <strong>above</strong> the 200-day
+                    (golden cross). <strong>Bull</strong> / <strong>Bear</strong> if only price vs 200-day differs.
+                </div>
+                <div style="font-size: 0.82em; color: #cbd5e1; margin-top: 10px; line-height: 1.45;">
+                    <strong style="color: #E7E9EA;">Weekly MACD Bullish</strong> — on <strong>QQQ</strong> weekly bars,
+                    MACD = 12-week EMA minus 26-week EMA of close; <strong>Bullish</strong> when MACD <strong>&gt; 0</strong>,
+                    <strong>Bearish</strong> otherwise. <strong>Rising</strong>/<strong>Falling</strong> compares MACD
+                    to its 9-week signal line.
+                </div>
+                <div style="font-size: 0.76em; color: #8899A6; margin-top: 10px; line-height: 1.35; text-align: center;">
+                    {_strong_bull_status} {_macd_now}
+                </div>
             </div>
         </div>""", unsafe_allow_html=True)
 
@@ -1255,129 +1283,201 @@ in a taxable account.""")
                     f"${r.starting_value:,.0f} → ${r.ending_value:,.0f} · "
                     f"{r.num_trades} trades · {r.win_rate_pct:.0f}% WR"
                 ):
-                    if r.trades:
-                        ym1, ym2, ym3 = st.columns(3)
-                        ym1.metric("Start", f"${r.starting_value:,.0f}")
-                        ym2.metric("End", f"${r.ending_value:,.0f}")
-                        pnl_val = r.ending_value - r.starting_value
-                        ym3.metric("P&L", f"${pnl_val:+,.0f}", delta=f"{r.total_return_pct:+.1f}%")
+                    ym1, ym2, ym3 = st.columns(3)
+                    ym1.metric("Start", f"${r.starting_value:,.0f}")
+                    ym2.metric("End", f"${r.ending_value:,.0f}")
+                    pnl_val = r.ending_value - r.starting_value
+                    ym3.metric("P&L", f"${pnl_val:+,.0f}", delta=f"{r.total_return_pct:+.1f}%")
 
-                        # Build event list: each BUY and SELL is a separate event
-                        events = []
-                        for ti, t in enumerate(r.trades):
-                            pct_deployed = t.cash_deployed / t.portfolio_before * 100 if t.portfolio_before > 0 else 0
-                            trade_pnl = t.portfolio_after - t.portfolio_before
+                    # Build event list: each BUY and SELL is a separate event (closed round-trips only)
+                    events = []
+                    for ti, t in enumerate(r.trades):
+                        pct_deployed = t.cash_deployed / t.portfolio_before * 100 if t.portfolio_before > 0 else 0
+                        trade_pnl = t.portfolio_after - t.portfolio_before
 
-                            # ── BUY event ──
-                            if t.signal_type == "FTD":
-                                buy_trigger = "Follow-Through Day (FTD) detected on the Nasdaq"
-                                buy_conditions = [
-                                    "Nasdaq corrected 7%+ from recent high",
-                                    "Rally attempt reached day 4+",
-                                    "Nasdaq gained 1.25%+ on the day",
-                                    "Volume was higher than prior session",
-                                ]
-                            elif t.signal_type == "MACD":
-                                buy_trigger = "Weekly MACD crossed above zero on QQQ"
-                                buy_conditions = [
-                                    "QQQ 12-week EMA crossed above 26-week EMA",
-                                    "QQQ was above its 200-day SMA",
-                                    "Intermediate-term trend confirmed bullish",
-                                ]
-                            elif t.signal_type == "Entry":
-                                buy_trigger = "Standard entry — QQQ in confirmed uptrend"
-                                buy_conditions = [
-                                    "QQQ was above its 200-day SMA",
-                                    "System defaults to invested in bull markets",
-                                ]
-                            else:
-                                buy_trigger = f"{t.signal_type} signal"
-                                buy_conditions = ["Signal conditions met"]
+                        # ── BUY event ──
+                        if t.signal_type == "FTD":
+                            buy_trigger = "Follow-Through Day (FTD) detected on the Nasdaq"
+                            buy_conditions = [
+                                "Nasdaq corrected 7%+ from recent high",
+                                "Rally attempt reached day 4+",
+                                "Nasdaq gained 1.25%+ on the day",
+                                "Volume was higher than prior session",
+                            ]
+                        elif t.signal_type == "MACD":
+                            buy_trigger = "Weekly MACD crossed above zero on QQQ"
+                            buy_conditions = [
+                                "QQQ 12-week EMA crossed above 26-week EMA",
+                                "QQQ was above its 200-day SMA",
+                                "Intermediate-term trend confirmed bullish",
+                            ]
+                        elif t.signal_type == "Entry":
+                            buy_trigger = "Standard entry — QQQ in confirmed uptrend"
+                            buy_conditions = [
+                                "QQQ was above its 200-day SMA",
+                                "System defaults to invested in bull markets",
+                            ]
+                        else:
+                            buy_trigger = f"{t.signal_type} signal"
+                            buy_conditions = ["Signal conditions met"]
 
-                            if pct_deployed > 80:
-                                alloc_reason = "100% — Full conviction: MACD positive + QQQ above 200-day"
-                            elif pct_deployed > 40:
-                                alloc_reason = "50% — Half position: either MACD negative or FTD below 200-day (probe)"
-                            else:
-                                alloc_reason = f"{pct_deployed:.0f}% — Cautious: limited conviction"
+                        if pct_deployed > 80:
+                            alloc_reason = "100% — Full conviction: MACD positive + QQQ above 200-day"
+                        elif pct_deployed > 40:
+                            alloc_reason = "50% — Half position: either MACD negative or FTD below 200-day (probe)"
+                        else:
+                            alloc_reason = f"{pct_deployed:.0f}% — Cautious: limited conviction"
 
-                            events.append({
-                                "type": "BUY",
-                                "date": t.entry_date,
-                                "icon": "🟢",
-                                "title": f"BUY {t.entry_date} — {t.signal_type}",
-                                "trigger": buy_trigger,
-                                "conditions": buy_conditions,
-                                "details": [
-                                    f"**Price:** ${t.entry_price:.2f} (TQQQ)",
-                                    f"**Shares:** {t.shares:,.0f}",
-                                    f"**Deployed:** ${t.cash_deployed:,.0f}",
-                                    f"**Allocation:** {alloc_reason}",
-                                    f"**Portfolio:** ${t.portfolio_before:,.0f}",
-                                ],
-                            })
+                        events.append({
+                            "type": "BUY",
+                            "date": t.entry_date,
+                            "icon": "🟢",
+                            "title": f"BUY {t.entry_date} — {t.signal_type}",
+                            "trigger": buy_trigger,
+                            "conditions": buy_conditions,
+                            "details": [
+                                f"**Price:** ${t.entry_price:.2f} (TQQQ)",
+                                f"**Shares:** {t.shares:,.0f}",
+                                f"**Deployed:** ${t.cash_deployed:,.0f}",
+                                f"**Allocation:** {alloc_reason}",
+                                f"**Portfolio:** ${t.portfolio_before:,.0f}",
+                            ],
+                        })
 
-                            # ── SELL event ──
-                            if t.duration_days <= 3 and t.return_pct <= 0:
-                                sell_trigger = "Quick exit — entry signal failed"
-                                sell_conditions = [
-                                    "QQQ broke below 200-day SMA within days of entry",
-                                    "2 consecutive closes below 200-day confirmed",
-                                    "Position closed to preserve capital",
-                                ]
-                            elif t.duration_days <= 20 and t.return_pct < -8:
-                                sell_trigger = "12% trailing stop fired"
-                                sell_conditions = [
-                                    "Portfolio dropped 12% from its recent peak",
-                                    "QQQ was >3% above 200-day (trailing stop was active)",
-                                    "Stop protects against slow rollovers from bull highs",
-                                ]
-                            elif t.return_pct <= 0:
-                                sell_trigger = "200-day SMA breakdown"
-                                sell_conditions = [
-                                    "QQQ closed below its 200-day SMA",
-                                    "Second consecutive close below confirmed the break",
-                                    "Market transitioned from bull to bear regime",
-                                ]
-                            elif t.duration_days > 100:
-                                sell_trigger = "200-day SMA exit after long hold"
-                                sell_conditions = [
-                                    f"Held for {t.duration_days} days through normal pullbacks",
-                                    "QQQ eventually closed below 200-day SMA for 2 consecutive days",
-                                    "The wide exit allowed riding the full uptrend",
-                                ]
-                            else:
-                                sell_trigger = "Exit conditions met"
-                                sell_conditions = [
-                                    "Either QQQ broke below 200-day for 2 days",
-                                    "Or 12% trailing stop fired from peak",
-                                ]
+                        # ── SELL event ──
+                        if t.duration_days <= 3 and t.return_pct <= 0:
+                            sell_trigger = "Quick exit — entry signal failed"
+                            sell_conditions = [
+                                "QQQ broke below 200-day SMA within days of entry",
+                                "2 consecutive closes below 200-day confirmed",
+                                "Position closed to preserve capital",
+                            ]
+                        elif t.duration_days <= 20 and t.return_pct < -8:
+                            sell_trigger = "12% trailing stop fired"
+                            sell_conditions = [
+                                "Portfolio dropped 12% from its recent peak",
+                                "QQQ was >3% above 200-day (trailing stop was active)",
+                                "Stop protects against slow rollovers from bull highs",
+                            ]
+                        elif t.return_pct <= 0:
+                            sell_trigger = "200-day SMA breakdown"
+                            sell_conditions = [
+                                "QQQ closed below its 200-day SMA",
+                                "Second consecutive close below confirmed the break",
+                                "Market transitioned from bull to bear regime",
+                            ]
+                        elif t.duration_days > 100:
+                            sell_trigger = "200-day SMA exit after long hold"
+                            sell_conditions = [
+                                f"Held for {t.duration_days} days through normal pullbacks",
+                                "QQQ eventually closed below 200-day SMA for 2 consecutive days",
+                                "The wide exit allowed riding the full uptrend",
+                            ]
+                        else:
+                            sell_trigger = "Exit conditions met"
+                            sell_conditions = [
+                                "Either QQQ broke below 200-day for 2 days",
+                                "Or 12% trailing stop fired from peak",
+                            ]
 
-                            t_color = "#17BF63" if t.return_pct > 0 else "#E0245E"
-                            events.append({
-                                "type": "SELL",
-                                "date": t.exit_date,
-                                "icon": "🔴" if t.return_pct <= 0 else "🟢",
-                                "trigger": sell_trigger,
-                                "conditions": sell_conditions,
-                                "ret": t.return_pct,
-                                "details": [
-                                    f"**Closed:** {t.exit_date} in after-hours (4:00-8:00 PM ET)",
-                                    f"**Sell price:** ${t.exit_price:.2f} (TQQQ)",
-                                    f"**Entered:** {t.entry_date} at ${t.entry_price:.2f}",
-                                    f"**Held:** {t.duration_days} days",
-                                    f"**Return:** {t.return_pct:+.1f}%",
-                                    f"**P&L:** ${trade_pnl:+,.0f}",
-                                    f"**Portfolio after:** ${t.portfolio_after:,.0f}",
-                                ],
-                                "color": t_color,
-                            })
+                        t_color = "#17BF63" if t.return_pct > 0 else "#E0245E"
+                        events.append({
+                            "type": "SELL",
+                            "date": t.exit_date,
+                            "icon": "🔴" if t.return_pct <= 0 else "🟢",
+                            "trigger": sell_trigger,
+                            "conditions": sell_conditions,
+                            "ret": t.return_pct,
+                            "details": [
+                                f"**Closed:** {t.exit_date} in after-hours (4:00-8:00 PM ET)",
+                                f"**Sell price:** ${t.exit_price:.2f} (TQQQ)",
+                                f"**Entered:** {t.entry_date} at ${t.entry_price:.2f}",
+                                f"**Held:** {t.duration_days} days",
+                                f"**Return:** {t.return_pct:+.1f}%",
+                                f"**P&L:** ${trade_pnl:+,.0f}",
+                                f"**Portfolio after:** ${t.portfolio_after:,.0f}",
+                            ],
+                            "color": t_color,
+                        })
 
-                        # Render each event as its own expander
+                    # Open lots: engine only writes round-trips on exit. get_dashboard_state() attaches
+                    # r.open_leg (same cached run as bt_results) so this list matches the Dashboard.
+                    _ol = r.open_leg if not using_json_fallback else None
+                    if _ol:
+                        ed = _ol["entry_date"]
+                        st_sig = _ol.get("signal_type") or "Entry"
+                        if st_sig == "FTD":
+                            buy_trigger = "Follow-Through Day (FTD) detected on the Nasdaq"
+                            buy_conditions = [
+                                "Nasdaq corrected 7%+ from recent high",
+                                "Rally attempt reached day 4+",
+                                "Nasdaq gained 1.25%+ on the day",
+                                "Volume was higher than prior session",
+                            ]
+                        elif st_sig == "MACD":
+                            buy_trigger = "Weekly MACD crossed above zero on QQQ"
+                            buy_conditions = [
+                                "QQQ 12-week EMA crossed above 26-week EMA",
+                                "QQQ was above its 200-day SMA",
+                                "Intermediate-term trend confirmed bullish",
+                            ]
+                        elif st_sig == "Entry":
+                            buy_trigger = "Standard entry — QQQ in confirmed uptrend"
+                            buy_conditions = [
+                                "QQQ was above its 200-day SMA",
+                                "System defaults to invested in bull markets",
+                            ]
+                        else:
+                            buy_trigger = f"{st_sig} signal"
+                            buy_conditions = ["Signal conditions met"]
+                        pct_deployed = float(_ol.get("allocation_pct") or 0)
+                        if pct_deployed > 80:
+                            alloc_reason = (
+                                "100% — Full conviction: MACD positive + QQQ above 200-day"
+                            )
+                        elif pct_deployed > 40:
+                            alloc_reason = (
+                                "50% — Half position: either MACD negative or FTD below 200-day (probe)"
+                            )
+                        else:
+                            alloc_reason = f"{pct_deployed:.0f}% — Cautious: limited conviction"
+                        ep = float(_ol.get("entry_price") or 0)
+                        sh = float(_ol.get("shares") or 0)
+                        deploy_est = sh * ep
+                        pv = float(_ol.get("portfolio_value") or 0)
+                        pb = (
+                            deploy_est / (pct_deployed / 100.0)
+                            if pct_deployed > 1e-6
+                            else pv
+                        )
+                        as_of = _ol.get("as_of_date") or ""
+                        events.append({
+                            "type": "BUY",
+                            "date": ed,
+                            "icon": "🟢",
+                            "title": f"BUY {ed} — {st_sig}",
+                            "trigger": buy_trigger,
+                            "conditions": buy_conditions,
+                            "details": [
+                                f"**Open position** — still held at **{as_of}** close; "
+                                "closed round-trips appear here only after an exit.",
+                                f"**Price:** ${ep:.2f} (TQQQ)",
+                                f"**Shares:** {sh:,.0f}",
+                                f"**Deployed (est.):** ${deploy_est:,.0f}",
+                                f"**Allocation:** {alloc_reason}",
+                                f"**Portfolio (est. at entry):** ${pb:,.0f}",
+                            ],
+                        })
+
+                    events.sort(key=lambda ev: ev["date"])
+
+                    if events:
                         for ev in events:
                             badge = "BUY" if ev["type"] == "BUY" else "SELL"
                             ret_label = f" · **{ev['ret']:+.1f}%**" if "ret" in ev else ""
-                            with st.expander(f"{ev['icon']} **{badge}** · {ev['date']} · {ev['trigger']}{ret_label}"):
+                            with st.expander(
+                                f"{ev['icon']} **{badge}** · {ev['date']} · {ev['trigger']}{ret_label}"
+                            ):
                                 st.markdown(f"**Trigger:** {ev['trigger']}")
                                 st.markdown("**Conditions met:**")
                                 for c in ev["conditions"]:
@@ -1392,7 +1492,7 @@ in a taxable account.""")
                             f"**QQQ B&H:** {r.qqq_buy_hold_pct:+.1f}%"
                         )
                     else:
-                        st.info("No trades generated for this period.")
+                        st.info("No closed or open trades to list for this period.")
 
             st.markdown("---")
             st.markdown("""
