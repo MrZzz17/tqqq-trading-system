@@ -191,150 +191,101 @@ def render():
 
         # Determine if we're currently in a position or flat
         if lt:
-            # Check if the last trade's exit is the last data point (still open)
             last_data_date = data_date.strftime("%Y-%m-%d")
             trade_is_open = lt.exit_date >= last_data_date
             pct_deployed = lt.cash_deployed / lt.portfolio_before * 100 if lt.portfolio_before > 0 else 0
+            unrealized = ((tqqq_price - lt.entry_price) / lt.entry_price * 100) if lt.entry_price > 0 else 0
+            unr_color = "#34d399" if unrealized >= 0 else "#f87171"
 
             if trade_is_open:
-                # Currently IN a position
-                act_color = "#34d399"
                 days_in = (dt.date.today() - dt.datetime.strptime(lt.entry_date, "%Y-%m-%d").date()).days
-                st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 14px;
-                    padding: 18px; background: {act_color}08; margin: 8px 0 16px 0;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                        <span style="background: {act_color}; color: #0a0f1a; padding: 4px 14px;
-                            border-radius: 20px; font-size: 0.78em; font-weight: 800;
-                            letter-spacing: 0.05em;">INVESTED</span>
-                        <span style="color: #f0f0f0; font-weight: 700; font-size: 1.05em;">
-                            {pct_deployed:.0f}% in TQQQ since {lt.entry_date}</span>
-                        <span style="color: #6b7280; font-size: 0.85em;">({days_in} days)</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
-                        font-size: 0.82em;">
+                st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
+                    padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
+                    margin: 8px 0 16px 0;">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;">
                         <div>
-                            <div style="color: #6b7280;">Entry Signal</div>
-                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
+                            <div style="font-size: 2.2em; font-weight: 900; color: #34d399;
+                                letter-spacing: -0.02em;">BUY</div>
+                            <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
+                                font-family: 'JetBrains Mono', monospace;">{lt.entry_date}</div>
                         </div>
-                        <div>
-                            <div style="color: #6b7280;">Buy Price</div>
-                            <div style="color: #f0f0f0; font-weight: 700;
-                                font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Position</div>
+                                <div style="font-size: 1.5em; font-weight: 900; color: #818cf8;
+                                    font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Entry</div>
+                                <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
+                                    font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Now</div>
+                                <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
+                                    font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                                <div style="font-size: 1.5em; font-weight: 900; color: {unr_color};
+                                    font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="color: #6b7280;">Current</div>
-                            <div style="color: #f0f0f0; font-weight: 700;
-                                font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280;">Unrealized</div>
-                            <div style="color: {act_color}; font-weight: 800;
-                                font-family: 'JetBrains Mono', monospace;">
-                                {((tqqq_price - lt.entry_price) / lt.entry_price * 100):+.1f}%</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280;">Shares</div>
-                            <div style="color: #f0f0f0; font-weight: 700;
-                                font-family: 'JetBrains Mono', monospace;">{lt.shares:,.0f}</div>
+                        <div style="text-align: right;">
+                            <div style="background: #34d399; color: #0a0f1a; padding: 6px 18px;
+                                border-radius: 24px; font-size: 0.85em; font-weight: 800;
+                                letter-spacing: 0.05em;">IN POSITION</div>
+                            <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
+                                {days_in} days · {lt.signal_type} · {lt.shares:,.0f} shares</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
             else:
-                # Currently FLAT — last trade was a completed sell
                 act_color = "#f87171" if not qqq_above_200_now else "#fbbf24"
-                st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 14px;
-                    padding: 18px; background: {act_color}08; margin: 8px 0 16px 0;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                        <span style="background: {act_color}; color: #0a0f1a; padding: 4px 14px;
-                            border-radius: 20px; font-size: 0.78em; font-weight: 800;
-                            letter-spacing: 0.05em;">CASH</span>
-                        <span style="color: #f0f0f0; font-weight: 700; font-size: 1.05em;">
-                            Exited on {lt.exit_date}</span>
-                        <span style="color: {lt_color}; font-weight: 800;
-                            font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</span>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-                        font-size: 0.82em;">
+                trade_pnl = lt.portfolio_after - lt.portfolio_before
+                st.markdown(f"""<div style="border: 2px solid {act_color}44; border-radius: 16px;
+                    padding: 20px 24px; background: linear-gradient(135deg, {act_color}08, rgba(255,255,255,0.02));
+                    margin: 8px 0 16px 0;">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 20px; align-items: center;">
                         <div>
-                            <div style="color: #6b7280;">Last Signal</div>
-                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
+                            <div style="font-size: 2.2em; font-weight: 900; color: {act_color};
+                                letter-spacing: -0.02em;">SELL</div>
+                            <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
+                                font-family: 'JetBrains Mono', monospace;">{lt.exit_date}</div>
                         </div>
-                        <div>
-                            <div style="color: #6b7280;">Held</div>
-                            <div style="color: #f0f0f0; font-weight: 700;">{lt.duration_days} days</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Position</div>
+                                <div style="font-size: 1.5em; font-weight: 900; color: #9ca3af;
+                                    font-family: 'JetBrains Mono', monospace;">0%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Result</div>
+                                <div style="font-size: 1.5em; font-weight: 900; color: {lt_color};
+                                    font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">P&L</div>
+                                <div style="font-size: 1.2em; font-weight: 700; color: {lt_color};
+                                    font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;">Held</div>
+                                <div style="font-size: 1.2em; font-weight: 700; color: #f0f0f0;
+                                    font-family: 'JetBrains Mono', monospace;">{lt.duration_days}d</div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="color: #6b7280;">Exit Price</div>
-                            <div style="color: #f0f0f0; font-weight: 700;
-                                font-family: 'JetBrains Mono', monospace;">${lt.exit_price:.2f}</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280;">Status</div>
-                            <div style="color: {act_color}; font-weight: 700;">
-                                {'Watching for entry' if qqq_above_200_now else 'Bear market — staying out'}</div>
+                        <div style="text-align: right;">
+                            <div style="background: {act_color}; color: #0a0f1a; padding: 6px 18px;
+                                border-radius: 24px; font-size: 0.85em; font-weight: 800;
+                                letter-spacing: 0.05em;">CASH</div>
+                            <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
+                                {'Watching for entry' if qqq_above_200_now else 'Bear market'}</div>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
 
-        # ── Last Trade + Current Allocation ──
-        if bt_results and lt:
-            pct_deployed = lt.cash_deployed / lt.portfolio_before * 100 if lt.portfolio_before > 0 else 0
-            invested_pct = pct_deployed
-            cash_pct = 100 - invested_pct
-            trade_pnl = lt.portfolio_after - lt.portfolio_before
-
-            st.markdown(f"""<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px;
-                    background: rgba(255,255,255,0.02);">
-                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.1em; margin-bottom: 10px;">Last Trade</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; font-size: 0.82em;">
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">Signal</div>
-                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">Entry → Exit</div>
-                            <div style="color: #f0f0f0; font-weight: 600;">{lt.entry_date} → {lt.exit_date}</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">Return</div>
-                            <div style="color: {lt_color}; font-weight: 800;
-                                font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</div>
-                        </div>
-                        <div>
-                            <div style="color: #6b7280; font-size: 0.85em;">P&L</div>
-                            <div style="color: {lt_color}; font-weight: 800;
-                                font-family: 'JetBrains Mono', monospace;">${trade_pnl:+,.0f}</div>
-                        </div>
-                    </div>
-                    <div style="font-size: 0.75em; color: #6b7280; margin-top: 8px;">
-                        Buy @ ${lt.entry_price:.2f} · Sell @ ${lt.exit_price:.2f} ·
-                        {lt.shares:,.0f} shares · {lt.duration_days} days</div>
-                </div>
-                <div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 16px;
-                    background: rgba(255,255,255,0.02); text-align: center;">
-                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.1em; margin-bottom: 10px;">Current Allocation</div>
-                    <div style="display: flex; height: 8px; border-radius: 4px; overflow: hidden;
-                        background: rgba(255,255,255,0.05); margin-bottom: 10px;">
-                        <div style="width: {invested_pct}%; background: #818cf8;"></div>
-                        <div style="width: {cash_pct}%; background: rgba(255,255,255,0.1);"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-around;">
-                        <div>
-                            <div style="font-size: 1.3em; font-weight: 800; color: #818cf8;
-                                font-family: 'JetBrains Mono', monospace;">{invested_pct:.0f}%</div>
-                            <div style="font-size: 0.72em; color: #6b7280;">TQQQ</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.3em; font-weight: 800; color: #9ca3af;
-                                font-family: 'JetBrains Mono', monospace;">{cash_pct:.0f}%</div>
-                            <div style="font-size: 0.72em; color: #6b7280;">Cash</div>
-                        </div>
-                    </div>
-                </div>
-            </div>""", unsafe_allow_html=True)
+        # (Last Trade + Allocation moved to top)
 
         # ── Hero: Lifetime Performance ──
         current_year = dt.date.today().year
