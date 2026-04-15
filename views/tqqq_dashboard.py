@@ -189,47 +189,92 @@ def render():
         lt_color = "#34d399" if (lt and lt.return_pct > 0) else "#f87171"
         today_str = dt.date.today().strftime("%B %d, %Y")
 
-        # Check if last trade was a sell (we're currently flat)
-        last_was_sell = lt is not None
+        # Determine if we're currently in a position or flat
+        if lt:
+            # Check if the last trade's exit is the last data point (still open)
+            last_data_date = data_date.strftime("%Y-%m-%d")
+            trade_is_open = lt.exit_date >= last_data_date
+            pct_deployed = lt.cash_deployed / lt.portfolio_before * 100 if lt.portfolio_before > 0 else 0
 
-        if qqq_above_200_now and macd_pos_now:
-            if last_was_sell:
-                act_text = "NEW ENTRY SIGNAL — QQQ above 200d + MACD positive. Buy TQQQ at 100%."
-                act_color = "#818cf8"; act_icon = "🔵"
+            if trade_is_open:
+                # Currently IN a position
+                act_color = "#34d399"
+                days_in = (dt.date.today() - dt.datetime.strptime(lt.entry_date, "%Y-%m-%d").date()).days
+                st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 14px;
+                    padding: 18px; background: {act_color}08; margin: 8px 0 16px 0;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="background: {act_color}; color: #0a0f1a; padding: 4px 14px;
+                            border-radius: 20px; font-size: 0.78em; font-weight: 800;
+                            letter-spacing: 0.05em;">INVESTED</span>
+                        <span style="color: #f0f0f0; font-weight: 700; font-size: 1.05em;">
+                            {pct_deployed:.0f}% in TQQQ since {lt.entry_date}</span>
+                        <span style="color: #6b7280; font-size: 0.85em;">({days_in} days)</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+                        font-size: 0.82em;">
+                        <div>
+                            <div style="color: #6b7280;">Entry Signal</div>
+                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Buy Price</div>
+                            <div style="color: #f0f0f0; font-weight: 700;
+                                font-family: 'JetBrains Mono', monospace;">${lt.entry_price:.2f}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Current</div>
+                            <div style="color: #f0f0f0; font-weight: 700;
+                                font-family: 'JetBrains Mono', monospace;">${tqqq_price:.2f}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Unrealized</div>
+                            <div style="color: {act_color}; font-weight: 800;
+                                font-family: 'JetBrains Mono', monospace;">
+                                {((tqqq_price - lt.entry_price) / lt.entry_price * 100):+.1f}%</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Shares</div>
+                            <div style="color: #f0f0f0; font-weight: 700;
+                                font-family: 'JetBrains Mono', monospace;">{lt.shares:,.0f}</div>
+                        </div>
+                    </div>
+                </div>""", unsafe_allow_html=True)
             else:
-                act_text = "BE INVESTED — QQQ above 200d + MACD positive. Hold 100% TQQQ."
-                act_color = "#34d399"; act_icon = "✅"
-        elif qqq_above_200_now:
-            if last_was_sell:
-                act_text = "NEW ENTRY SIGNAL (CAUTIOUS) — QQQ above 200d but MACD negative. Buy TQQQ at 50%."
-                act_color = "#fbbf24"; act_icon = "⚠️"
-            else:
-                act_text = "CAUTION — QQQ above 200d but MACD negative. Hold 50% TQQQ."
-                act_color = "#fbbf24"; act_icon = "⚠️"
-        else:
-            act_text = "STAY OUT — QQQ below 200-day SMA. Cash or SGOV only."
-            act_color = "#f87171"; act_icon = "🔴"
-
-        st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 12px;
-            padding: 16px; background: {act_color}06; margin: 8px 0 16px 0;">
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
-                <div>
-                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.1em;">Today — {today_str}</div>
-                    <div style="font-size: 1.1em; font-weight: 700; color: {act_color}; margin-top: 4px;">
-                        {act_icon} {act_text}</div>
-                </div>
-                <div style="border-left: 1px solid rgba(255,255,255,0.06); padding-left: 16px;">
-                    <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.1em;">Last Trade</div>
-                    {'<div style="margin-top: 4px;">' +
-                     f'<span style="font-size: 1.2em; font-weight: 800; color: {lt_color};">{lt.return_pct:+.1f}%</span>' +
-                     f' <span style="background: rgba(129,140,248,0.15); color: #a5b4fc; padding: 2px 8px; border-radius: 20px; font-size: 0.68em; font-weight: 600;">{lt.signal_type}</span>' +
-                     f'</div><div style="font-size: 0.72em; color: #6b7280; margin-top: 2px;">{lt.entry_date} → {lt.exit_date}</div>'
-                     if lt else '<div style="color: #6b7280;">No trades</div>'}
-                </div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+                # Currently FLAT — last trade was a completed sell
+                act_color = "#f87171" if not qqq_above_200_now else "#fbbf24"
+                st.markdown(f"""<div style="border: 1px solid {act_color}33; border-radius: 14px;
+                    padding: 18px; background: {act_color}08; margin: 8px 0 16px 0;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <span style="background: {act_color}; color: #0a0f1a; padding: 4px 14px;
+                            border-radius: 20px; font-size: 0.78em; font-weight: 800;
+                            letter-spacing: 0.05em;">CASH</span>
+                        <span style="color: #f0f0f0; font-weight: 700; font-size: 1.05em;">
+                            Exited on {lt.exit_date}</span>
+                        <span style="color: {lt_color}; font-weight: 800;
+                            font-family: 'JetBrains Mono', monospace;">{lt.return_pct:+.1f}%</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+                        font-size: 0.82em;">
+                        <div>
+                            <div style="color: #6b7280;">Last Signal</div>
+                            <div style="color: #a5b4fc; font-weight: 700;">{lt.signal_type}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Held</div>
+                            <div style="color: #f0f0f0; font-weight: 700;">{lt.duration_days} days</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Exit Price</div>
+                            <div style="color: #f0f0f0; font-weight: 700;
+                                font-family: 'JetBrains Mono', monospace;">${lt.exit_price:.2f}</div>
+                        </div>
+                        <div>
+                            <div style="color: #6b7280;">Status</div>
+                            <div style="color: {act_color}; font-weight: 700;">
+                                {'Watching for entry' if qqq_above_200_now else 'Bear market — staying out'}</div>
+                        </div>
+                    </div>
+                </div>""", unsafe_allow_html=True)
 
         # ── Last Trade + Current Allocation ──
         if bt_results and lt:
