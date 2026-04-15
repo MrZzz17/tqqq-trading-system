@@ -1,0 +1,18 @@
+---
+description: Ship TQQQ site changes end-to-end (git + push)
+globs:
+  - "**/*"
+---
+
+# TQQQ Trading System — change workflow
+
+When the user asks to change anything for **this Streamlit site** (`tqqq-trading-system`), treat the task as **done** only after:
+
+1. **Implement** the change in the repo under `tqqq-trading-system/` (not only the parent `Personal/` folder unless that is the target).
+2. **Verify** — run syntax check or a quick smoke test when reasonable.
+3. **Commit** to `main` with a clear message.
+4. **`git push origin main`** so GitHub (and any host wired to the repo, e.g. Streamlit Cloud) can deploy.
+
+Do **not** stop at local edits. If push fails (auth/network), say so and give the exact commands to run.
+
+Regenerating `data/backtest_cache.json` when engine output affects it: run `python3 scripts/regenerate_backtest_cache.py` and include in the same commit when relevant.
