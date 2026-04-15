@@ -258,15 +258,12 @@ def render():
                   and float(qqq_sma50_val) > float(qqq_sma200_val))
         if golden and above_200:
             regime_str = "Strong Bull"
-            regime_color = "#17BF63"
             exit_desc = "Holding through normal pullbacks. Exit on 2 closes below QQQ 50-day."
         elif above_200:
             regime_str = "Bull"
-            regime_color = "#FFAD1F"
             exit_desc = "Cautious hold. Exit on 2 closes below QQQ 21-day EMA."
         else:
             regime_str = "Bear"
-            regime_color = "#E0245E"
             exit_desc = "QQQ below 200-day. Stay in cash."
         alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
 
@@ -352,8 +349,8 @@ def render():
                                 letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
                                 {why_text} QQQ above 200-day SMA.</div>
-                            <div style="font-size: 0.88em; color: #d1d5db; margin-top: 8px; line-height: 1.5;">
-                                <b style="color: {regime_color};">{regime_str}:</b> {exit_desc} Allocation: <b>{alloc_label}</b></div>
+                            <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 8px; line-height: 1.6; font-weight: 600;">
+                                {regime_str}: {exit_desc} Allocation: {alloc_label}</div>
                             <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
                                 {days_in} days · {live.shares:,.0f} shares · PV ${live.portfolio_value:,.0f}</div>
                         </div>
@@ -415,8 +412,8 @@ def render():
                                 letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 4px; line-height: 1.6; font-weight: 600;">
                                 {sell_why}</div>
-                            <div style="font-size: 0.88em; color: #d1d5db; margin-top: 8px; line-height: 1.5;">
-                                <b style="color: {regime_color};">{regime_str}:</b> {exit_desc} Allocation: <b>{alloc_label}</b></div>
+                            <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 8px; line-height: 1.6; font-weight: 600;">
+                                {regime_str}: {exit_desc} Allocation: {alloc_label}</div>
                             <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
                                 {sell_next}</div>
                         </div>
