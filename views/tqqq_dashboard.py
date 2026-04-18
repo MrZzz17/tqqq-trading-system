@@ -55,6 +55,55 @@ def _filter_tqqq_by_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
     return sub.copy()
 
 
+def _collect_model_trade_markers(
+    bt_results: list,
+    t0,
+    t1,
+    using_json_fallback: bool,
+) -> list:
+    """TQQQ entry/exit prices from the same backtest the dashboard uses, clipped to the chart window."""
+    out = []
+    if not bt_results:
+        return out
+    t0_ts = pd.Timestamp(t0).normalize()
+    t1_ts = pd.Timestamp(t1).normalize()
+    for r in bt_results:
+        for t in r.trades:
+            ed = pd.Timestamp(t.entry_date).normalize()
+            xd = pd.Timestamp(t.exit_date).normalize()
+            if t0_ts <= ed <= t1_ts:
+                out.append(
+                    {
+                        "ts": ed,
+                        "price": float(t.entry_price),
+                        "kind": "entry",
+                        "signal": str(t.signal_type or ""),
+                    }
+                )
+            if t0_ts <= xd <= t1_ts:
+                out.append(
+                    {
+                        "ts": xd,
+                        "price": float(t.exit_price),
+                        "kind": "exit",
+                        "signal": str(t.signal_type or ""),
+                    }
+                )
+        if not using_json_fallback and getattr(r, "open_leg", None):
+            ol = r.open_leg
+            ed = pd.Timestamp(ol["entry_date"]).normalize()
+            if t0_ts <= ed <= t1_ts:
+                out.append(
+                    {
+                        "ts": ed,
+                        "price": float(ol.get("entry_price") or 0),
+                        "kind": "entry",
+                        "signal": str(ol.get("signal_type") or "Entry"),
+                    }
+                )
+    return out
+
+
 def _filter_equity_series(bt_equity: dict, period: str) -> Tuple[List, List[float]]:
     """Sorted dates and values for the selected period (falls back if slice is empty)."""
     eq_dates = sorted(bt_equity.keys())
@@ -80,8 +129,7 @@ from core.data import (
 )
 from core.indicators import detect_market_regime
 from core.signals import detect_follow_through_day
-from core.swing_tracker import detect_swings
-from core.charts import build_tqqq_chart
+from core.charts import build_qqq_tqqq_model_chart
 from core.backtest import (
     get_dashboard_state,
     STARTING_CAPITAL,
@@ -978,8 +1026,8 @@ def render():
                 <span style="color: #6b7280; font-size: 0.68em; margin-left: 6px;">SAFETY</span>
             </div>""", unsafe_allow_html=True)
 
-        # Chart (same Period control + styling as equity curve above)
-        st.markdown("### TQQQ Price Chart")
+        # Chart — QQQ context (regime / trend) + TQQQ execution + model fills + volume
+        st.markdown("### QQQ and TQQQ — model price chart")
         tqqq_period = st.segmented_control(
             "Period",
             options=EQUITY_PERIOD_OPTIONS,
@@ -987,20 +1035,32 @@ def render():
             key="tqqq_price_period",
         ) or "All"
         tqqq_chart_df = _filter_tqqq_by_period(tqqq, tqqq_period)
-        year_now = dt.datetime.now().year
-        swings_all = detect_swings(tqqq, min_move_pct=5.0, year_filter=year_now - 1)
         if tqqq_chart_df is not None and len(tqqq_chart_df) > 0:
             t0, t1 = tqqq_chart_df.index[0], tqqq_chart_df.index[-1]
-            swings = [s for s in swings_all if s.date >= t0 and s.date <= t1]
+            trade_markers = _collect_model_trade_markers(
+                bt_results, t0, t1, using_json_fallback
+            )
+            fig = build_qqq_tqqq_model_chart(
+                tqqq_chart_df,
+                qqq_df=qqq,
+                trade_markers=trade_markers,
+            )
+            st.plotly_chart(
+                fig,
+                key="main_chart",
+                use_container_width=True,
+                config={"scrollZoom": False, "displayModeBar": False},
+            )
+            st.caption(
+                "**QQQ (top):** trend / regime context the rules use (21 EMA, 50 / 200 SMA). "
+                "**TQQQ (middle):** instrument the model trades; **green ▲ / red ▼** = backtest **entry / exit** "
+                "at that day’s close with labeled **TQQQ** price (same engine as the dashboard). "
+                "**Bottom:** TQQQ **volume** bars (height = shares traded that day) vs 50-day average volume line — "
+                "not automated swing pivots — those were structural highs/lows only, not buy/sell signals, and are "
+                "removed so the chart matches how decisions are made."
+            )
         else:
-            swings = swings_all
-        fig = build_tqqq_chart(tqqq_chart_df, swings=swings, lookback_days=None)
-        st.plotly_chart(
-            fig,
-            key="main_chart",
-            use_container_width=True,
-            config={"scrollZoom": False, "displayModeBar": False},
-        )
+            st.info("Not enough TQQQ data for this period.")
 
         # MA Table
         latest = tqqq.iloc[-1]
@@ -1183,12 +1243,12 @@ in a taxable account.""")
 4. **Market Health** — QQQ/SPY vs MAs plus **Strong Bull** / weekly MACD context tiles.
 5. **System Signals** — **Follow-Through Day**, **Weekly MACD** on QQQ, and **QQQ vs 200-day** (entry context); next row:
    **200-day exit**, **12% trailing stop**, and **crash detector** (risk).
-6. **TQQQ Price Chart** — Same **Period** as the equity curve; **Moving Average Positioning** table below for distance vs MAs.
+6. **QQQ & TQQQ model chart** — Same **Period** as the equity curve: QQQ context row, TQQQ row with **model entry/exit** labels, TQQQ volume; **Moving Average Positioning** table below for TQQQ vs MAs.
 """)
 
         st.markdown("### Weekly Routine (15 minutes)")
         st.markdown("""
-1. **Swings** — Triangles on the **TQQQ chart** mark recent swing highs/lows; relate them to the MA table.
+1. **Model fills** — Use **Buy / Sell** markers on the **QQQ & TQQQ** chart (backtest prices on TQQQ) with the MA table for context.
 2. **Regime & distribution** — The **Nasdaq** pulse tile reflects clustering of distribution days (warn/critical
    thresholds are built into that logic). For detail, see *How the System Works* → distribution days.
 3. **Chart & MAs** — Same as daily: TQQQ vs 10/21/50/200 and “from peak” on the health cards.
@@ -1202,16 +1262,16 @@ in a taxable account.""")
 |---------|-------------------|
 | **Top row** | Last prices; **Nasdaq / SPY pulse** (uptrend vs stress vs correction) |
 | **Live position card** | V6 **Buy / Sell / Flat** and detail for the last daily close (when Yahoo data is live) |
-| **Hero & equity chart** | Strategy backtest value and cumulative equity (same **Period** presets as TQQQ chart) |
+| **Hero & equity chart** | Strategy backtest value and cumulative equity (same **Period** presets as the price chart) |
 | **Market Health** | QQQ & SPY vs MAs; **Strong Bull** / weekly MACD definitions |
 | **System Signals** | FTD, weekly MACD, QQQ vs 200-day — **entries**; next row: 200d exit, 12% trail, crash — **risk** |
-| **TQQQ chart** | Candles, MAs, volume, swing markers — use **Period** to zoom |
+| **QQQ & TQQQ chart** | QQQ + TQQQ candles/MAs, model **entry/exit** flags, TQQQ **volume** bars — **Period** to zoom |
 | **MA table** | Distance from 10/21/50/200 — “danger zone” framing is informal, not a hard rule |
 """)
 
         st.markdown("### Sidebar Controls")
         st.markdown(f"""
-- **Period** — Lives on the **Dashboard** and **Historical Performance** tabs (not in the sidebar). It filters both the **equity curve** and the **TQQQ price chart** (1D … All).
+- **Period** — Lives on the **Dashboard** and **Historical Performance** tabs (not in the sidebar). It filters both the **equity curve** and the **QQQ & TQQQ model chart** (1D … All).
 - **Bulls %** — Optional AAII bullish % for your own tracking (not fed into the on-page tiles; strategy cards use Yahoo data + V6 engine only).
 - **Refresh Data** — Clears caches and immediately re-fetches quotes **and** re-runs the V6 engine. Quote cache TTL: {config.CACHE_EXPIRY_HOURS}h unless refreshed.
 """)

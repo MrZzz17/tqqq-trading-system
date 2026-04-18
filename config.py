@@ -59,4 +59,4 @@ LOOKBACK_DAYS = 365
 STRATEGY_ENGINE_CACHE_SECONDS = 300
 
 # Shown on Market Health — bump when that panel changes (confirms deploy picked up UI)
-DASHBOARD_MARKET_HEALTH_REV = "2026-04-15-market-health-layout"
+DASHBOARD_MARKET_HEALTH_REV = "2026-04-16-qqq-tqqq-chart"

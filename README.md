@@ -17,7 +17,7 @@ streamlit run app.py
 - **Backtest hero & equity curve** — Cumulative performance with Period control (1D … All)
 - **Market Health** — QQQ/SPY vs MAs; regime + weekly MACD explanation tiles
 - **System Signals** — FTD, weekly MACD, QQQ vs 200-day (entries); 200-day exit, 12% trail, crash detector (risk)
-- **TQQQ chart** — Candlesticks, 10/21/50/200 MAs, volume, swing markers (same Period as equity chart)
+- **QQQ & TQQQ model chart** — QQQ row (regime MAs), TQQQ row (candles, MAs, backtest entry/exit markers), TQQQ volume (same Period as equity chart)
 
 ## Phase 2: Stock Screener (Planned)
 

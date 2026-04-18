@@ -3,181 +3,296 @@ Plotly chart builders for the TQQQ dashboard.
 Twitter-dark color scheme: #15202B background, #1DA1F2 accent.
 """
 
+from typing import Any, Dict, List, Optional
+
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from typing import List, Optional
-
-from core.swing_tracker import SwingPoint
 
 BG_COLOR = "rgba(10,15,26,1)"
 GRID_COLOR = "rgba(255,255,255,0.04)"
 GREEN = "#34d399"
 RED = "#f87171"
 BLUE = "#818cf8"
+QQQ_CANDLE_UP = "#38bdf8"
+QQQ_CANDLE_DOWN = "#0ea5e9"
 
 
-def build_tqqq_chart(
-    df: pd.DataFrame,
-    swings: Optional[List[SwingPoint]] = None,
-    lookback_days: Optional[int] = None,
+def _rangebreaks_kw():
+    return dict(bounds=["sat", "mon"])
+
+
+def _align_qqq_to_tqqq(tqqq_df: pd.DataFrame, qqq_df: pd.DataFrame) -> pd.DataFrame:
+    """Reindex QQQ to TQQQ trading dates (ffill for rare misaligned holidays)."""
+    if qqq_df is None or qqq_df.empty or tqqq_df is None or tqqq_df.empty:
+        return pd.DataFrame()
+    q = qqq_df.reindex(tqqq_df.index).ffill()
+    return q
+
+
+def build_qqq_tqqq_model_chart(
+    tqqq_df: pd.DataFrame,
+    qqq_df: Optional[pd.DataFrame] = None,
+    trade_markers: Optional[List[Dict[str, Any]]] = None,
 ) -> go.Figure:
-    plot_df = df if df is not None and not df.empty else pd.DataFrame()
-    if plot_df.empty:
+    """
+    QQQ (regime / trend context) + TQQQ (traded vehicle) + TQQQ volume.
+
+    trade_markers: list of dicts with keys ts (Timestamp), price (float),
+    kind ('entry'|'exit'), optional signal (str) — backtest / model fills on TQQQ.
+    """
+    plot_t = tqqq_df if tqqq_df is not None and not tqqq_df.empty else pd.DataFrame()
+    if plot_t.empty:
         fig = go.Figure()
-        fig.update_layout(template="plotly_dark", height=400, paper_bgcolor="rgba(0,0,0,0)",
-                          plot_bgcolor=BG_COLOR, annotations=[dict(text="No data", showarrow=False)])
+        fig.update_layout(
+            template="plotly_dark",
+            height=400,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor=BG_COLOR,
+            annotations=[dict(text="No data", showarrow=False, x=0.5, y=0.5, xref="paper", yref="paper")],
+        )
         return fig
 
-    fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        vertical_spacing=0.03,
-        row_heights=[0.75, 0.25],
+    markers = trade_markers or []
+    q_aligned = _align_qqq_to_tqqq(plot_t, qqq_df) if qqq_df is not None else pd.DataFrame()
+    show_qqq = not q_aligned.empty and q_aligned["Close"].notna().any()
+
+    if show_qqq:
+        fig = make_subplots(
+            rows=3,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.02,
+            row_heights=[0.22, 0.58, 0.20],
+        )
+        row_qqq, row_tqqq, row_vol = 1, 2, 3
+    else:
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            row_heights=[0.78, 0.22],
+        )
+        row_qqq, row_tqqq, row_vol = None, 1, 2
+
+    # ── QQQ row (context: same MA stack the model uses on QQQ) ──
+    if show_qqq:
+        fig.add_trace(
+            go.Candlestick(
+                x=q_aligned.index,
+                open=q_aligned["Open"],
+                high=q_aligned["High"],
+                low=q_aligned["Low"],
+                close=q_aligned["Close"],
+                name="QQQ",
+                increasing_line_color=QQQ_CANDLE_UP,
+                decreasing_line_color=QQQ_CANDLE_DOWN,
+                increasing_fillcolor=QQQ_CANDLE_UP,
+                decreasing_fillcolor=QQQ_CANDLE_DOWN,
+            ),
+            row=row_qqq,
+            col=1,
+        )
+        for col_name, label, color, width in [
+            ("EMA_21", "QQQ 21d EMA", "#93c5fd", 1),
+            ("SMA_50", "QQQ 50d MA", "#c084fc", 1.5),
+            ("SMA_200", "QQQ 200d MA", "#fb923c", 1.5),
+        ]:
+            if col_name in q_aligned.columns and q_aligned[col_name].notna().any():
+                fig.add_trace(
+                    go.Scatter(
+                        x=q_aligned.index,
+                        y=q_aligned[col_name],
+                        name=label,
+                        line=dict(color=color, width=width),
+                        opacity=0.9,
+                    ),
+                    row=row_qqq,
+                    col=1,
+                )
+
+    # ── TQQQ row (execution + full MA ribbon) ──
+    fig.add_trace(
+        go.Candlestick(
+            x=plot_t.index,
+            open=plot_t["Open"],
+            high=plot_t["High"],
+            low=plot_t["Low"],
+            close=plot_t["Close"],
+            name="TQQQ",
+            increasing_line_color=GREEN,
+            decreasing_line_color=RED,
+            increasing_fillcolor=GREEN,
+            decreasing_fillcolor=RED,
+        ),
+        row=row_tqqq,
+        col=1,
     )
 
-    fig.add_trace(go.Candlestick(
-        x=plot_df.index,
-        open=plot_df["Open"],
-        high=plot_df["High"],
-        low=plot_df["Low"],
-        close=plot_df["Close"],
-        name="TQQQ",
-        increasing_line_color=GREEN,
-        decreasing_line_color=RED,
-        increasing_fillcolor=GREEN,
-        decreasing_fillcolor=RED,
-    ), row=1, col=1)
-
     ma_configs = [
-        ("SMA_10", "10d MA", "#fbbf24", 1),
-        ("EMA_21", "21d EMA", BLUE, 1.5),
-        ("SMA_50", "50d MA", "#c084fc", 2),
-        ("SMA_200", "200d MA", "#fb923c", 2),
+        ("SMA_10", "TQQQ 10d MA", "#fbbf24", 1),
+        ("EMA_21", "TQQQ 21d EMA", BLUE, 1.5),
+        ("SMA_50", "TQQQ 50d MA", "#c084fc", 2),
+        ("SMA_200", "TQQQ 200d MA", "#fb923c", 2),
     ]
     for col_name, label, color, width in ma_configs:
-        if col_name in plot_df.columns:
-            fig.add_trace(go.Scatter(
-                x=plot_df.index,
-                y=plot_df[col_name],
-                name=label,
-                line=dict(color=color, width=width),
-                opacity=0.85,
-            ), row=1, col=1)
+        if col_name in plot_t.columns:
+            fig.add_trace(
+                go.Scatter(
+                    x=plot_t.index,
+                    y=plot_t[col_name],
+                    name=label,
+                    line=dict(color=color, width=width),
+                    opacity=0.85,
+                ),
+                row=row_tqqq,
+                col=1,
+            )
 
-    colors = [
-        GREEN if plot_df.iloc[i]["Close"] >= plot_df.iloc[i]["Open"] else RED
-        for i in range(len(plot_df))
+    # Model entry / exit on TQQQ (backtest + open leg passed in from dashboard)
+    ent_x, ent_y, ent_txt = [], [], []
+    ex_x, ex_y, ex_txt = [], [], []
+    for m in markers:
+        ts = m.get("ts")
+        if ts is None:
+            continue
+        ts = pd.Timestamp(ts)
+        if ts < plot_t.index[0] or ts > plot_t.index[-1]:
+            continue
+        price = float(m.get("price") or 0)
+        if price <= 0:
+            continue
+        sig = (m.get("signal") or "").strip()
+        kind = (m.get("kind") or "").lower()
+        if kind == "entry":
+            ent_x.append(ts)
+            ent_y.append(price)
+            ent_txt.append(f"Buy ${price:.2f}" + (f"<br>({sig})" if sig else ""))
+        elif kind == "exit":
+            ex_x.append(ts)
+            ex_y.append(price)
+            ex_txt.append(f"Sell ${price:.2f}" + (f"<br>({sig})" if sig else ""))
+
+    if ent_x:
+        fig.add_trace(
+            go.Scatter(
+                x=ent_x,
+                y=ent_y,
+                mode="markers+text",
+                name="Model entry",
+                legendgroup="marks",
+                marker=dict(size=11, color=GREEN, symbol="triangle-up", line=dict(width=1, color="#ecfdf5")),
+                text=ent_txt,
+                textposition="top center",
+                textfont=dict(size=10, color="#a7f3d0"),
+                cliponaxis=False,
+                hovertemplate="%{text}<extra></extra>",
+            ),
+            row=row_tqqq,
+            col=1,
+        )
+    if ex_x:
+        fig.add_trace(
+            go.Scatter(
+                x=ex_x,
+                y=ex_y,
+                mode="markers+text",
+                name="Model exit",
+                legendgroup="marks",
+                marker=dict(size=11, color=RED, symbol="triangle-down", line=dict(width=1, color="#fee2e2")),
+                text=ex_txt,
+                textposition="bottom center",
+                textfont=dict(size=10, color="#fecaca"),
+                cliponaxis=False,
+                hovertemplate="%{text}<extra></extra>",
+            ),
+            row=row_tqqq,
+            col=1,
+        )
+
+    # ── Volume: TQQQ only, bar height = daily volume (no secondary fake “strip”) ──
+    vol_colors = [
+        GREEN if plot_t.iloc[i]["Close"] >= plot_t.iloc[i]["Open"] else RED for i in range(len(plot_t))
     ]
-    fig.add_trace(go.Bar(
-        x=plot_df.index,
-        y=plot_df["Volume"],
-        name="Volume",
-        marker_color=colors,
-        opacity=0.3,
-    ), row=2, col=1)
+    fig.add_trace(
+        go.Bar(
+            x=plot_t.index,
+            y=plot_t["Volume"],
+            name="TQQQ volume",
+            marker_color=vol_colors,
+            marker_line_width=0,
+            opacity=0.72,
+            showlegend=True,
+        ),
+        row=row_vol,
+        col=1,
+    )
+    if "Vol_SMA_50" in plot_t.columns and plot_t["Vol_SMA_50"].notna().any():
+        fig.add_trace(
+            go.Scatter(
+                x=plot_t.index,
+                y=plot_t["Vol_SMA_50"],
+                name="50d avg vol",
+                line=dict(color="#fbbf24", width=1.2, dash="dot"),
+            ),
+            row=row_vol,
+            col=1,
+        )
 
-    if "Vol_SMA_50" in plot_df.columns:
-        fig.add_trace(go.Scatter(
-            x=plot_df.index,
-            y=plot_df["Vol_SMA_50"],
-            name="50d Avg Vol",
-            line=dict(color="#fbbf24", width=1, dash="dot"),
-        ), row=2, col=1)
-
-    if swings:
-        for s in swings:
-            if s.date >= plot_df.index[0] and s.date <= plot_df.index[-1]:
-                color = RED if s.point_type == "peak" else GREEN
-                symbol = "triangle-down" if s.point_type == "peak" else "triangle-up"
-                fig.add_trace(go.Scatter(
-                    x=[s.date],
-                    y=[s.price],
-                    mode="markers",
-                    marker=dict(size=12, color=color, symbol=symbol,
-                                line=dict(width=1, color="#f0f0f0")),
-                    name=f"{'Peak' if s.point_type == 'peak' else 'Trough'} ${s.price:.2f}",
-                    showlegend=False,
-                    hovertext=f"{s.point_type.title()}: ${s.price:.2f}<br>{s.pct_move:+.1f}% | {s.trading_days}d",
-                ), row=1, col=1)
-
-    x_start = plot_df.index[0]
-    x_end = plot_df.index[-1]
-    if lookback_days is not None and len(plot_df) > lookback_days:
-        x_start = plot_df.index[-lookback_days]
+    x_start = plot_t.index[0]
+    x_end = plot_t.index[-1]
 
     fig.update_layout(
         template="plotly_dark",
-        height=480,
-        margin=dict(l=10, r=10, t=30, b=10),
+        height=560 if show_qqq else 480,
+        margin=dict(l=10, r=10, t=36, b=10),
         legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-            font=dict(color="#9ca3af", size=11),
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(color="#9ca3af", size=10),
         ),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(10,15,26,1)",
     )
-    # Collapse Sat–Sun on the time axis so Fri connects to Mon (daily bars are weekdays only)
+    # Candlestick rangeslider draws a misleading flat strip under the chart — disable on every pane
     fig.update_xaxes(
+        rangeslider_visible=False,
         range=[x_start, x_end],
         showgrid=False,
         gridcolor="rgba(255,255,255,0.03)",
         fixedrange=True,
         zeroline=False,
-        rangebreaks=[dict(bounds=["sat", "mon"])],
+        rangebreaks=[_rangebreaks_kw()],
     )
     fig.update_yaxes(
         showgrid=True,
         gridcolor="rgba(255,255,255,0.04)",
         zeroline=False,
         fixedrange=True,
-        row=1, col=1,
+        row=row_tqqq,
+        col=1,
     )
     fig.update_yaxes(
         showgrid=True,
         gridcolor="rgba(255,255,255,0.04)",
         zeroline=False,
         fixedrange=True,
-        row=2, col=1,
+        rangemode="tozero",
+        row=row_vol,
+        col=1,
     )
+    if show_qqq:
+        fig.update_yaxes(
+            showgrid=True,
+            gridcolor="rgba(255,255,255,0.04)",
+            zeroline=False,
+            fixedrange=True,
+            row=row_qqq,
+            col=1,
+        )
 
-    return fig
-
-
-def build_distribution_chart(nasdaq_df: pd.DataFrame, dist_days: list, lookback: int = 60) -> go.Figure:
-    plot_df = nasdaq_df.iloc[-lookback:]
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=plot_df.index,
-        y=plot_df["Close"],
-        name="Nasdaq",
-        line=dict(color=BLUE, width=2),
-        fill="tozeroy",
-        fillcolor="rgba(29,161,242,0.08)",
-    ))
-
-    dist_in_range = [d for d in dist_days if d.date >= plot_df.index[0]]
-    if dist_in_range:
-        fig.add_trace(go.Scatter(
-            x=[d.date for d in dist_in_range],
-            y=[float(plot_df.loc[d.date, "Close"]) for d in dist_in_range if d.date in plot_df.index],
-            mode="markers",
-            marker=dict(size=10, color=RED, symbol="x", line=dict(width=2, color=RED)),
-            name="Distribution Day",
-        ))
-
-    fig.update_layout(
-        template="plotly_dark",
-        height=250,
-        margin=dict(l=10, r=10, t=10, b=10),
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
-            font=dict(color="#9ca3af", size=11),
-        ),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor=BG_COLOR,
-    )
-    fig.update_xaxes(gridcolor=GRID_COLOR)
-    fig.update_yaxes(gridcolor=GRID_COLOR)
     return fig
