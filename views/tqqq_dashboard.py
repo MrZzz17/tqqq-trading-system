@@ -1243,7 +1243,7 @@ in a taxable account.""")
 4. **Market Health** — QQQ/SPY vs MAs plus **Strong Bull** / weekly MACD context tiles.
 5. **System Signals** — **Follow-Through Day**, **Weekly MACD** on QQQ, and **QQQ vs 200-day** (entry context); next row:
    **200-day exit**, **12% trailing stop**, and **crash detector** (risk).
-6. **QQQ & TQQQ model chart** — Same **Period** as the equity curve: QQQ context row, TQQQ row with **model entry/exit** labels, TQQQ volume; **Moving Average Positioning** table below for TQQQ vs MAs.
+6. **QQQ and TQQQ model chart** — Same **Period** as the equity curve: QQQ context row, TQQQ row with **model entry/exit** labels, TQQQ volume; **Moving Average Positioning** table below for TQQQ vs MAs.
 """)
 
         st.markdown("### Weekly Routine (15 minutes)")
@@ -1265,13 +1265,13 @@ in a taxable account.""")
 | **Hero & equity chart** | Strategy backtest value and cumulative equity (same **Period** presets as the price chart) |
 | **Market Health** | QQQ & SPY vs MAs; **Strong Bull** / weekly MACD definitions |
 | **System Signals** | FTD, weekly MACD, QQQ vs 200-day — **entries**; next row: 200d exit, 12% trail, crash — **risk** |
-| **QQQ & TQQQ chart** | QQQ + TQQQ candles/MAs, model **entry/exit** flags, TQQQ **volume** bars — **Period** to zoom |
+| **QQQ and TQQQ chart** | QQQ + TQQQ candles/MAs, model **entry/exit** flags, TQQQ **volume** bars — **Period** to zoom |
 | **MA table** | Distance from 10/21/50/200 — “danger zone” framing is informal, not a hard rule |
 """)
 
         st.markdown("### Sidebar Controls")
         st.markdown(f"""
-- **Period** — Lives on the **Dashboard** and **Historical Performance** tabs (not in the sidebar). It filters both the **equity curve** and the **QQQ & TQQQ model chart** (1D … All).
+- **Period** — Lives on the **Dashboard** and **Historical Performance** tabs (not in the sidebar). It filters both the **equity curve** and the **QQQ and TQQQ model chart** (1D … All).
 - **Bulls %** — Optional AAII bullish % for your own tracking (not fed into the on-page tiles; strategy cards use Yahoo data + V6 engine only).
 - **Refresh Data** — Clears caches and immediately re-fetches quotes **and** re-runs the V6 engine. Quote cache TTL: {config.CACHE_EXPIRY_HOURS}h unless refreshed.
 """)
