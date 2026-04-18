@@ -59,4 +59,4 @@ LOOKBACK_DAYS = 365
 STRATEGY_ENGINE_CACHE_SECONDS = 300
 
 # Shown on Market Health — bump when that panel changes (confirms deploy picked up UI)
-DASHBOARD_MARKET_HEALTH_REV = "v2-st-columns"
+DASHBOARD_MARKET_HEALTH_REV = "v3-full-row-balance"

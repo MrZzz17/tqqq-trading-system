@@ -851,65 +851,64 @@ def render():
             else "Weekly MACD: N/A (insufficient data)."
         )
 
-        # Streamlit column ratios enforce layout (HTML grid inside one markdown often stretches to full width).
-        _mh_tile_h = "min-height: 172px"
-        _mh_row_l, _mh_row_spacer = st.columns([0.58, 0.42], gap="small")
-        with _mh_row_l:
-            mh_c1, mh_c2, mh_c3 = st.columns([1.0, 1.0, 3.6], gap="small")
-            with mh_c1:
-                st.markdown(
-                    f"""<div data-market-health-rev="{config.DASHBOARD_MARKET_HEALTH_REV}"
-                    style="border: 1px solid {_tile_rc}44; border-radius: 12px; padding: 10px 6px;
-                    background: {_tile_rc}10; box-sizing: border-box; {_mh_tile_h};
-                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+        # Full-width row: left two tiles a bit narrower than the explainer (~24% / ~24% / ~52%), same min-height.
+        _mh_tile_h = "min-height: 204px"
+        mh_c1, mh_c2, mh_c3 = st.columns([1.15, 1.15, 2.45], gap="small")
+        with mh_c1:
+            st.markdown(
+                f"""<div data-market-health-rev="{config.DASHBOARD_MARKET_HEALTH_REV}"
+                style="border: 1px solid {_tile_rc}44; border-radius: 12px; padding: 14px 12px;
+                background: {_tile_rc}10; box-sizing: border-box; {_mh_tile_h};
+                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                text-align: center;">
+                <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Market Regime</div>
+                <div style="font-size: 1.28em; font-weight: 800; color: {_tile_rc}; margin-top: 10px; line-height: 1.2;">
+                    {regime_str}</div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+        with mh_c2:
+            st.markdown(
+                f"""<div style="border: 1px solid {macd_color}44; border-radius: 12px; padding: 14px 12px;
+                background: {macd_color}10; box-sizing: border-box; {_mh_tile_h};
+                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                text-align: center;">
+                <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Weekly MACD</div>
+                <div style="font-size: 1.28em; font-weight: 800; color: {macd_color}; margin-top: 10px; line-height: 1.2;">
+                    {macd_label}</div>
+                <div style="font-size: 0.76em; color: #8899A6; margin-top: 8px;">
+                    {macd_trend} · {macd_val_display}</div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+        with mh_c3:
+            st.markdown(
+                f"""<div style="border: 1px solid rgba(29,161,242,0.28); border-radius: 12px; padding: 14px 18px;
+                background: rgba(29,161,242,0.05); text-align: left; box-sizing: border-box; {_mh_tile_h};
+                display: flex; flex-direction: column; justify-content: flex-start;">
+                <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.05em;
                     text-align: center;">
-                    <div style="font-size: 0.7em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.06em;">
-                        Market Regime</div>
-                    <div style="font-size: 1.2em; font-weight: 800; color: {_tile_rc}; margin-top: 8px; line-height: 1.2;">
-                        {regime_str}</div>
-                    </div>""",
-                    unsafe_allow_html=True,
-                )
-            with mh_c2:
-                st.markdown(
-                    f"""<div style="border: 1px solid {macd_color}44; border-radius: 12px; padding: 10px 6px;
-                    background: {macd_color}10; box-sizing: border-box; {_mh_tile_h};
-                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    How regime &amp; MACD are set · {config.DASHBOARD_MARKET_HEALTH_REV}</div>
+                <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
+                    <strong style="color: #E7E9EA;">Strong Bull</strong> — last <strong>QQQ</strong> daily close
+                    <strong>above</strong> the 200-day SMA <em>and</em> 50-day SMA <strong>above</strong> the 200-day
+                    (golden cross). <strong>Bull</strong> / <strong>Bear</strong> if only price vs 200-day differs.
+                </div>
+                <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
+                    <strong style="color: #E7E9EA;">Weekly MACD Bullish</strong> — on <strong>QQQ</strong> weekly bars,
+                    MACD = 12-week EMA minus 26-week EMA of close; <strong>Bullish</strong> when MACD <strong>&gt; 0</strong>,
+                    <strong>Bearish</strong> otherwise. <strong>Rising</strong>/<strong>Falling</strong> compares MACD
+                    to its 9-week signal line.
+                </div>
+                <div style="font-size: 0.78em; color: #8899A6; margin-top: auto; padding-top: 8px; line-height: 1.45;
                     text-align: center;">
-                    <div style="font-size: 0.7em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.06em;">
-                        Weekly MACD</div>
-                    <div style="font-size: 1.2em; font-weight: 800; color: {macd_color}; margin-top: 8px; line-height: 1.2;">
-                        {macd_label}</div>
-                    <div style="font-size: 0.72em; color: #8899A6; margin-top: 8px;">{macd_trend} · {macd_val_display}</div>
-                    </div>""",
-                    unsafe_allow_html=True,
-                )
-            with mh_c3:
-                st.markdown(
-                    f"""<div style="border: 1px solid rgba(29,161,242,0.28); border-radius: 12px; padding: 14px 16px;
-                    background: rgba(29,161,242,0.05); text-align: left; box-sizing: border-box; min-height: 172px;">
-                    <div style="font-size: 0.7em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.05em;
-                        text-align: center;">
-                        How regime &amp; MACD are set · {config.DASHBOARD_MARKET_HEALTH_REV}</div>
-                    <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
-                        <strong style="color: #E7E9EA;">Strong Bull</strong> — last <strong>QQQ</strong> daily close
-                        <strong>above</strong> the 200-day SMA <em>and</em> 50-day SMA <strong>above</strong> the 200-day
-                        (golden cross). <strong>Bull</strong> / <strong>Bear</strong> if only price vs 200-day differs.
-                    </div>
-                    <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
-                        <strong style="color: #E7E9EA;">Weekly MACD Bullish</strong> — on <strong>QQQ</strong> weekly bars,
-                        MACD = 12-week EMA minus 26-week EMA of close; <strong>Bullish</strong> when MACD <strong>&gt; 0</strong>,
-                        <strong>Bearish</strong> otherwise. <strong>Rising</strong>/<strong>Falling</strong> compares MACD
-                        to its 9-week signal line.
-                    </div>
-                    <div style="font-size: 0.78em; color: #8899A6; margin-top: 10px; line-height: 1.45; text-align: center;">
-                        {_strong_bull_status} {_macd_now}
-                    </div>
-                    </div>""",
-                    unsafe_allow_html=True,
-                )
-        with _mh_row_spacer:
-            st.empty()  # right margin so the Market Health trio does not span full page width
+                    {_strong_bull_status} {_macd_now}
+                </div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
 
         hc1, hc2 = st.columns(2)
         with hc1:
