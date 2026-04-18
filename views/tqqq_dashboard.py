@@ -1248,7 +1248,7 @@ in a taxable account.""")
 
         st.markdown("### Weekly Routine (15 minutes)")
         st.markdown("""
-1. **Model fills** — Use **Buy / Sell** markers on the **QQQ & TQQQ** chart (backtest prices on TQQQ) with the MA table for context.
+1. **Model fills** — Use **Buy / Sell** markers on the **QQQ and TQQQ** chart (backtest prices on TQQQ) with the MA table for context.
 2. **Regime & distribution** — The **Nasdaq** pulse tile reflects clustering of distribution days (warn/critical
    thresholds are built into that logic). For detail, see *How the System Works* → distribution days.
 3. **Chart & MAs** — Same as daily: TQQQ vs 10/21/50/200 and “from peak” on the health cards.
