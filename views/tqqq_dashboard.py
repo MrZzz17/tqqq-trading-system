@@ -852,7 +852,7 @@ def render():
         )
 
         # Full-width row: left two tiles a bit narrower than the explainer (~24% / ~24% / ~52%), same min-height.
-        _mh_tile_h = "min-height: 204px"
+        _mh_tile_h = "min-height: 220px"
         mh_c1, mh_c2, mh_c3 = st.columns([1.15, 1.15, 2.45], gap="small")
         with mh_c1:
             st.markdown(
