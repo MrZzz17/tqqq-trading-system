@@ -683,7 +683,12 @@ def render():
         # (Last Trade + Allocation moved to top)
 
         # ── Market Health Panel ──
-        st.markdown("### Market Health")
+        # Plain HTML h3 — Streamlit's ### adds a permalink (chain) icon next to the title
+        st.markdown(
+            '<h3 style="margin: 1rem 0 0.75rem 0; padding: 0; font-size: 1.25rem; font-weight: 600; '
+            'color: #fafafa; letter-spacing: -0.02em;">Market Health</h3>',
+            unsafe_allow_html=True,
+        )
 
         def _ma_status(df, col, label):
             val = df.iloc[-1].get(col)
@@ -793,41 +798,48 @@ def render():
 
         _macd_expl = "Bullish" if (macd_val is not None and macd_val > 0) else "Bearish"
         _macd_now = (
-            f"Weekly MACD now: {_macd_expl} (MACD {'&gt; 0' if macd_val and macd_val > 0 else '≤ 0'})."
+            f"Weekly MACD now: {_macd_expl} (MACD {'&gt; 0' if macd_val is not None and macd_val > 0 else '≤ 0'})."
             if macd_val is not None
             else "Weekly MACD: N/A (insufficient data)."
         )
 
-        st.markdown(f"""<div data-market-health-rev="{config.DASHBOARD_MARKET_HEALTH_REV}" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-            <div style="border: 1px solid {_tile_rc}33; border-radius: 12px; padding: 14px;
-                background: {_tile_rc}08; text-align: center;">
-                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Market Regime</div>
-                <div style="font-size: 1.4em; font-weight: 800; color: {_tile_rc};">{regime_str}</div>
+        st.markdown(f"""<div style="max-width: 680px; margin-bottom: 16px;">
+            <div data-market-health-rev="{config.DASHBOARD_MARKET_HEALTH_REV}"
+                style="display: grid; grid-template-columns: minmax(0, 0.88fr) minmax(0, 0.88fr) minmax(0, 2.05fr); gap: 10px;">
+            <div style="border: 1px solid {_tile_rc}33; border-radius: 12px; padding: 10px 8px;
+                background: {_tile_rc}08; text-align: center;
+                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                min-height: 124px;">
+                <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.04em;">Market Regime</div>
+                <div style="font-size: 1.25em; font-weight: 800; color: {_tile_rc}; margin-top: 6px; line-height: 1.15;">{regime_str}</div>
             </div>
-            <div style="border: 1px solid {macd_color}33; border-radius: 12px; padding: 14px;
-                background: {macd_color}08; text-align: center;">
-                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase;">Weekly MACD</div>
-                <div style="font-size: 1.4em; font-weight: 800; color: {macd_color};">{macd_label}</div>
-                <div style="font-size: 0.75em; color: #8899A6; margin-top: 4px;">{macd_trend} · {macd_val_display}</div>
+            <div style="border: 1px solid {macd_color}33; border-radius: 12px; padding: 10px 8px;
+                background: {macd_color}08; text-align: center;
+                display: flex; flex-direction: column; justify-content: center; align-items: center;
+                min-height: 124px;">
+                <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.04em;">Weekly MACD</div>
+                <div style="font-size: 1.25em; font-weight: 800; color: {macd_color}; margin-top: 6px; line-height: 1.15;">{macd_label}</div>
+                <div style="font-size: 0.72em; color: #8899A6; margin-top: 6px;">{macd_trend} · {macd_val_display}</div>
             </div>
-            <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 14px 16px;
+            <div style="border: 1px solid rgba(29,161,242,0.2); border-radius: 12px; padding: 12px 14px;
                 background: rgba(29,161,242,0.03); text-align: left;">
-                <div style="font-size: 0.75em; color: #8899A6; text-transform: uppercase; text-align: center;">
+                <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; margin-bottom: 2px;">
                     How regime &amp; MACD are set · {config.DASHBOARD_MARKET_HEALTH_REV}</div>
-                <div style="font-size: 0.82em; color: #cbd5e1; margin-top: 10px; line-height: 1.45;">
+                <div style="font-size: 0.84em; color: #cbd5e1; margin-top: 8px; line-height: 1.5;">
                     <strong style="color: #E7E9EA;">Strong Bull</strong> — last <strong>QQQ</strong> daily close
                     <strong>above</strong> the 200-day SMA <em>and</em> 50-day SMA <strong>above</strong> the 200-day
                     (golden cross). <strong>Bull</strong> / <strong>Bear</strong> if only price vs 200-day differs.
                 </div>
-                <div style="font-size: 0.82em; color: #cbd5e1; margin-top: 10px; line-height: 1.45;">
+                <div style="font-size: 0.84em; color: #cbd5e1; margin-top: 8px; line-height: 1.5;">
                     <strong style="color: #E7E9EA;">Weekly MACD Bullish</strong> — on <strong>QQQ</strong> weekly bars,
                     MACD = 12-week EMA minus 26-week EMA of close; <strong>Bullish</strong> when MACD <strong>&gt; 0</strong>,
                     <strong>Bearish</strong> otherwise. <strong>Rising</strong>/<strong>Falling</strong> compares MACD
                     to its 9-week signal line.
                 </div>
-                <div style="font-size: 0.76em; color: #8899A6; margin-top: 10px; line-height: 1.35; text-align: center;">
+                <div style="font-size: 0.78em; color: #8899A6; margin-top: 8px; line-height: 1.4; text-align: center;">
                     {_strong_bull_status} {_macd_now}
                 </div>
+            </div>
             </div>
         </div>""", unsafe_allow_html=True)
 
