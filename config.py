@@ -58,5 +58,12 @@ LOOKBACK_DAYS = 365
 # Yahoo Finance daily bars for the V6 engine (must stay in sync with dashboard live state)
 STRATEGY_ENGINE_CACHE_SECONDS = 300
 
-# Shown on Market Health — bump when that panel changes (confirms deploy picked up UI)
-DASHBOARD_MARKET_HEALTH_REV = "v3-full-row-balance"
+# Optional cache-bust hook for the Market Health block (kept in data attr for QA)
+DASHBOARD_MARKET_HEALTH_ID = "regime-macd-panel"
+
+# V6 backtest / live engine — surface in footer for reproducibility
+ENGINE_VERSION = "6.0.0"
+
+# yfinance `period` for TQQQ/QQQ in the dashboard. Must cover backtest start year so
+# "All" on the model price chart matches the equity curve (2011+).
+DASHBOARD_YF_PERIOD = "max"

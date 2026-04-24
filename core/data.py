@@ -174,7 +174,7 @@ def add_weekly_macd(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_tqqq_data() -> pd.DataFrame:
-    df = fetch_daily(config.TQQQ, period="2y")
+    df = fetch_daily(config.TQQQ, period=config.DASHBOARD_YF_PERIOD)
     if df.empty:
         return df
     df = add_moving_averages(df)
@@ -183,7 +183,7 @@ def get_tqqq_data() -> pd.DataFrame:
 
 
 def get_qqq_data() -> pd.DataFrame:
-    df = fetch_daily(config.QQQ, period="2y")
+    df = fetch_daily(config.QQQ, period=config.DASHBOARD_YF_PERIOD)
     if df.empty:
         return df
     df = add_moving_averages(df)

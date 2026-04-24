@@ -34,12 +34,16 @@ def build_qqq_tqqq_model_chart(
     tqqq_df: pd.DataFrame,
     qqq_df: Optional[pd.DataFrame] = None,
     trade_markers: Optional[List[Dict[str, Any]]] = None,
+    label_mode: str = "price",
+    tqqq_yaxis_log: bool = False,
 ) -> go.Figure:
     """
     QQQ (regime / trend context) + TQQQ (traded vehicle) + TQQQ volume.
 
     trade_markers: list of dicts with keys ts (Timestamp), price (float),
     kind ('entry'|'exit'), optional signal (str) — backtest / model fills on TQQQ.
+    label_mode: "full" (text+signal), "price" (price only; signal on hover), "none" (markers only).
+    tqqq_yaxis_log: if True, log scale on TQQQ price panel (useful for very long "All" windows).
     """
     plot_t = tqqq_df if tqqq_df is not None and not tqqq_df.empty else pd.DataFrame()
     if plot_t.empty:
@@ -151,8 +155,8 @@ def build_qqq_tqqq_model_chart(
             )
 
     # Model entry / exit on TQQQ (backtest + open leg passed in from dashboard)
-    ent_x, ent_y, ent_txt = [], [], []
-    ex_x, ex_y, ex_txt = [], [], []
+    ent_x, ent_y, ent_txt, ent_hint = [], [], [], []
+    ex_x, ex_y, ex_txt, ex_hint = [], [], [], []
     for m in markers:
         ts = m.get("ts")
         if ts is None:
@@ -165,29 +169,60 @@ def build_qqq_tqqq_model_chart(
             continue
         sig = (m.get("signal") or "").strip()
         kind = (m.get("kind") or "").lower()
+        short_buy = f"Buy ${price:.2f}"
+        short_sell = f"Sell ${price:.2f}"
         if kind == "entry":
             ent_x.append(ts)
             ent_y.append(price)
-            ent_txt.append(f"Buy ${price:.2f}" + (f"<br>({sig})" if sig else ""))
+            if label_mode == "none":
+                ent_txt.append("")
+            elif label_mode == "full":
+                ent_txt.append(short_buy + (f"<br>({sig})" if sig else ""))
+            else:  # price
+                ent_txt.append(short_buy)
+            ent_hint.append(sig or "—")
         elif kind == "exit":
             ex_x.append(ts)
             ex_y.append(price)
-            ex_txt.append(f"Sell ${price:.2f}" + (f"<br>({sig})" if sig else ""))
+            if label_mode == "none":
+                ex_txt.append("")
+            elif label_mode == "full":
+                ex_txt.append(short_sell + (f"<br>({sig})" if sig else ""))
+            else:
+                ex_txt.append(short_sell)
+            ex_hint.append(sig or "—")
 
+    _ent_mode = "markers+text" if label_mode != "none" else "markers"
+    _ex_mode = "markers+text" if label_mode != "none" else "markers"
+    _ht_ent = (
+        "Entry $%{y:,.2f}<br>Signal: %{customdata}<extra></extra>" if label_mode == "none"
+        else (
+            "%{text}<extra></extra>" if label_mode == "full"
+            else "%{text}<br>Signal: %{customdata}<extra></extra>"
+        )
+    )
+    _ht_ex = (
+        "Exit $%{y:,.2f}<br>Signal: %{customdata}<extra></extra>" if label_mode == "none"
+        else (
+            "%{text}<extra></extra>" if label_mode == "full"
+            else "%{text}<br>Signal: %{customdata}<extra></extra>"
+        )
+    )
     if ent_x:
         fig.add_trace(
             go.Scatter(
                 x=ent_x,
                 y=ent_y,
-                mode="markers+text",
+                mode=_ent_mode,
                 name="Model entry",
                 legendgroup="marks",
                 marker=dict(size=11, color=GREEN, symbol="triangle-up", line=dict(width=1, color="#ecfdf5")),
-                text=ent_txt,
+                text=ent_txt if label_mode != "none" else None,
                 textposition="top center",
                 textfont=dict(size=10, color="#a7f3d0"),
+                customdata=ent_hint,
                 cliponaxis=False,
-                hovertemplate="%{text}<extra></extra>",
+                hovertemplate=_ht_ent,
             ),
             row=row_tqqq,
             col=1,
@@ -197,15 +232,16 @@ def build_qqq_tqqq_model_chart(
             go.Scatter(
                 x=ex_x,
                 y=ex_y,
-                mode="markers+text",
+                mode=_ex_mode,
                 name="Model exit",
                 legendgroup="marks",
                 marker=dict(size=11, color=RED, symbol="triangle-down", line=dict(width=1, color="#fee2e2")),
-                text=ex_txt,
+                text=ex_txt if label_mode != "none" else None,
                 textposition="bottom center",
                 textfont=dict(size=10, color="#fecaca"),
+                customdata=ex_hint,
                 cliponaxis=False,
-                hovertemplate="%{text}<extra></extra>",
+                hovertemplate=_ht_ex,
             ),
             row=row_tqqq,
             col=1,
@@ -273,6 +309,8 @@ def build_qqq_tqqq_model_chart(
         gridcolor="rgba(255,255,255,0.04)",
         zeroline=False,
         fixedrange=True,
+        type="log" if tqqq_yaxis_log else "linear",
+        title="TQQQ (log)" if tqqq_yaxis_log else None,
         row=row_tqqq,
         col=1,
     )

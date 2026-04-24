@@ -136,6 +136,11 @@ from core.backtest import (
     Trade,
     YearResult,
 )
+from core.dashboard_metrics import (
+    compute_equity_max_drawdown,
+    trade_count_breakdown,
+    year_result_for_year,
+)
 import config
 import json
 import os
@@ -242,16 +247,20 @@ def render():
         st.markdown("---")
         st.markdown("##### Settings")
         bulls_pct = st.number_input(
-            "Bulls % (AAII sentiment)",
+            "Bulls % (AAII — not used by strategy; optional personal note)",
             min_value=0.0, max_value=100.0, value=0.0, step=1.0,
-            help="Enter the latest AAII bullish sentiment %. Leave 0 if unknown.",
+            help="Optional AAII bullish % for your own tracking. The dashboard never feeds this into trade signals; "
+            "tiles use closing bars + the V6 engine only.",
         )
         st.markdown("---")
         if st.button("🔄 Refresh Data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
         st.markdown("---")
-        st.caption("Data: Yahoo Finance (delayed)")
+        st.caption(
+            f"Data: Yahoo Finance (15-min delayed daily bars) · engine v{config.ENGINE_VERSION} · "
+            "see page footer (optional TradingView when API keys are set)"
+        )
         st.caption("Not financial advice.")
     bulls_input = bulls_pct if bulls_pct > 0 else None
 
@@ -355,7 +364,9 @@ def render():
   </div>
 </div>
 """, unsafe_allow_html=True)
-        _loaded_et = dt.datetime.now(ZoneInfo("America/New_York")).strftime("%I:%M %p ET")
+        _et = dt.datetime.now(ZoneInfo("America/New_York"))
+        _h12 = _et.hour % 12 or 12
+        _loaded_et = f"{_h12}:{_et.minute:02d} {'AM' if _et.hour < 12 else 'PM'} ET"
         _today_et = dt.datetime.now(ZoneInfo("America/New_York")).date()
         if live:
             _bar_date = dt.datetime.strptime(live.as_of_date, "%Y-%m-%d").date()
@@ -436,7 +447,7 @@ def render():
                 # Long = last signal is Buy; entry date column shows actual fill date.
                 main_lbl = "Buy"
                 _gh = "font-size: 0.85em; color: #6b7280; text-transform: uppercase; line-height: 1.2;"
-                st.markdown(f"""<div style="border: 2px solid #34d39944; border-radius: 16px;
+                st.markdown(f"""<div class="live-position-wrap" style="border: 2px solid #34d39944; border-radius: 16px;
                     padding: 20px 24px; background: linear-gradient(135deg, rgba(52,211,153,0.08), rgba(129,140,248,0.04));
                     margin: 8px 0 16px 0;
                     display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px;">
@@ -445,11 +456,11 @@ def render():
                                 letter-spacing: -0.02em; line-height: 1;">{main_lbl}</div>
                             <div style="font-size: 0.75em; color: #6b7280; margin-top: 4px;">As of close</div>
                             <div style="font-size: 1.1em; font-weight: 700; color: #f0f0f0;
-                                font-family: 'JetBrains Mono', monospace;">{live.as_of_date}</div>
+                                font-family: 'JetBrains Mono', monospace; white-space: nowrap;">{live.as_of_date}</div>
                         </div>
                         <div style="flex: 0 1 auto; min-width: 0;
-                            display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-                            grid-template-rows: auto auto; column-gap: 6px; row-gap: 6px; align-items: start;">
+                            display: grid; grid-template-columns: minmax(52px,1fr) minmax(56px,1.1fr) minmax(92px,1.4fr) minmax(52px,1fr) minmax(56px,1fr);
+                            grid-template-rows: auto auto; column-gap: 8px; row-gap: 6px; align-items: start;">
                             <div style="grid-column: 1; grid-row: 1; text-align: center;"><div style="{_gh}">Position</div></div>
                             <div style="grid-column: 2; grid-row: 1; text-align: center;"><div style="{_gh}">Entry</div></div>
                             <div style="grid-column: 3; grid-row: 1; text-align: center;"><div style="{_gh}">Entry date</div></div>
@@ -457,24 +468,24 @@ def render():
                             <div style="grid-column: 5; grid-row: 1; text-align: center;"><div style="{_gh}">P&L</div></div>
                             <div style="grid-column: 1; grid-row: 2; text-align: center;">
                                 <div style="font-size: 1.4em; font-weight: 800; color: #818cf8;
-                                    font-family: 'JetBrains Mono', monospace;">{pct_deployed:.0f}%</div>
+                                    font-family: 'JetBrains Mono', monospace; white-space: nowrap;">{pct_deployed:.0f}%</div>
                             </div>
                             <div style="grid-column: 2; grid-row: 2; text-align: center;">
                                 <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                    font-family: 'JetBrains Mono', monospace;">${live.entry_price:.2f}</div>
+                                    font-family: 'JetBrains Mono', monospace; white-space: nowrap;">${live.entry_price:.2f}</div>
                             </div>
                             <div style="grid-column: 3; grid-row: 2; text-align: center;">
                                 <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                    font-family: 'JetBrains Mono', monospace;">{live.entry_date or "—"}</div>
-                                <div style="font-size: 0.75em; color: #9ca3af; margin-top: 2px; line-height: 1.2;">4:00 PM ET</div>
+                                    font-family: 'JetBrains Mono', monospace; white-space: nowrap;">{live.entry_date or "—"}</div>
+                                <div style="font-size: 0.75em; color: #9ca3af; margin-top: 2px; line-height: 1.2; white-space: nowrap;">4:00 PM ET</div>
                             </div>
                             <div style="grid-column: 4; grid-row: 2; text-align: center;">
                                 <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
-                                    font-family: 'JetBrains Mono', monospace;">${_tqqq_show:.2f}</div>
+                                    font-family: 'JetBrains Mono', monospace; white-space: nowrap;">${_tqqq_show:.2f}</div>
                             </div>
                             <div style="grid-column: 5; grid-row: 2; text-align: center;">
                                 <div style="font-size: 1.4em; font-weight: 800; color: {unr_color};
-                                    font-family: 'JetBrains Mono', monospace;">{unrealized:+.1f}%</div>
+                                    font-family: 'JetBrains Mono', monospace; white-space: nowrap;">{unrealized:+.1f}%</div>
                             </div>
                         </div>
                         <div style="flex: 1 1 280px; min-width: 0; text-align: left; padding-left: 16px;
@@ -574,16 +585,27 @@ def render():
 
             # Hero %s use daily backtest equity (last completed bar), not live intraday quotes.
             stats_as_of = ""
+            first_eq_s = ""
+            last_eq_s = ""
             if bt_equity:
                 try:
-                    stats_as_of = pd.Timestamp(max(bt_equity.keys())).strftime("%b %d, %Y")
+                    k0, k1 = min(bt_equity.keys()), max(bt_equity.keys())
+                    first_eq_s = pd.Timestamp(k0).strftime("%Y-%m-%d")
+                    last_eq_s = pd.Timestamp(k1).strftime("%Y-%m-%d")
+                    stats_as_of = pd.Timestamp(k1).strftime("%b %d, %Y")
                 except (TypeError, ValueError):
                     stats_as_of = ""
+                    first_eq_s = str(start_year_bt) + "-01-01"
+                    last_eq_s = str(current_year) + "-12-31"
 
             ytd_pct = ytd_result.total_return_pct if ytd_result else 0
             py_pct = prior_year_result.total_return_pct if prior_year_result else 0
             py_color = "#34d399" if py_pct >= 0 else "#f87171"
             ytd_color = "#34d399" if ytd_pct >= 0 else "#f87171"
+            if not first_eq_s:
+                first_eq_s = f"{start_year_bt}-01-01"
+            if not last_eq_s and bt_results:
+                last_eq_s = pd.Timestamp(dt.date(current_year, 12, 31)).strftime("%Y-%m-%d")
 
             st.markdown(f"""<div style="border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
                 padding: 28px 24px; background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.03));
@@ -593,9 +615,9 @@ def render():
                     border-radius: 50%;"></div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: center;
                     position: relative;">
-                    <div style="text-align: center;">
+                    <div style="text-align: center; min-width: 0; padding: 0 4px; overflow: visible;">
                         <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
-                            letter-spacing: 0.12em; font-weight: 500;">Return {start_year_bt} – YTD {current_year}</div>
+                            letter-spacing: 0.12em; font-weight: 500;">Return {first_eq_s} → {last_eq_s}</div>
                         <div style="font-size: 2.8em; font-weight: 900; color: #34d399;
                             letter-spacing: -0.04em; line-height: 1.1;
                             font-family: 'JetBrains Mono', monospace;">${lifetime_end:,.0f}</div>
@@ -609,15 +631,15 @@ def render():
                         <div style="font-size: 2.2em; font-weight: 800; color: {py_color};
                             line-height: 1.2; font-family: 'JetBrains Mono', monospace;">{py_pct:+.1f}%</div>
                         <div style="font-size: 0.75em; color: #6b7280; margin-top: 6px;">
-                            vs B&H {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
+                            vs TQQQ buy&hold {prior_year_result.tqqq_buy_hold_pct:+.1f}%</div>
                     </div>
-                    <div style="text-align: center;">
+                    <div style="text-align: center; min-width: 0; padding: 0 4px; overflow: visible;">
                         <div style="font-size: 0.85em; color: #6b7280; text-transform: uppercase;
                             letter-spacing: 0.12em; font-weight: 500;">{current_year} YTD</div>
                         <div style="font-size: 2.2em; font-weight: 800; color: {ytd_color};
-                            line-height: 1.2; font-family: 'JetBrains Mono', monospace;">{ytd_pct:+.1f}%</div>
+                            line-height: 1.2; font-family: 'JetBrains Mono', monospace; padding-right: 2px;">{ytd_pct:+.1f}%</div>
                         <div style="font-size: 0.75em; color: #6b7280; margin-top: 6px;">
-                            vs B&H {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
+                            vs TQQQ buy&hold {ytd_result.tqqq_buy_hold_pct:+.1f}%</div>
                     </div>
                 </div>
                 <div style="text-align: center; margin-top: 18px; padding-top: 14px;
@@ -635,17 +657,18 @@ def render():
             import plotly.graph_objects as go
 
             total_trades = sum(r.num_trades for r in bt_results)
-            overall_wr = sum(r.win_rate_pct * r.num_trades for r in bt_results if r.num_trades > 0) / max(total_trades, 1)
-            total_max_dd = 0.0
-            max_dd_date = None
-            pk = list(bt_equity.values())[0]
-            for d_eq, v in sorted(bt_equity.items()):
-                if v > pk: pk = v
-                dd = ((v - pk) / pk) * 100
-                if dd < total_max_dd:
-                    total_max_dd = dd
-                    max_dd_date = d_eq
-            max_dd_label = max_dd_date.strftime("%b'%y") if max_dd_date else ""
+            closed_n, open_n = trade_count_breakdown(bt_results, live)
+            trade_hdr = f"{closed_n} Trades" + (f" ({open_n} open)" if open_n else "")
+            overall_wr = sum(
+                r.win_rate_pct * r.num_trades for r in bt_results if r.num_trades > 0
+            ) / max(total_trades, 1)
+            total_max_dd, peak_mdd, trough_mdd = compute_equity_max_drawdown(bt_equity)
+            if peak_mdd is not None and trough_mdd is not None:
+                max_dd_label = (
+                    f"{peak_mdd.strftime('%b %Y')} → {trough_mdd.strftime('%b %Y')}"
+                )
+            else:
+                max_dd_label = ""
 
             # Stats row ABOVE the chart
             st.markdown(f"""<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
@@ -675,19 +698,32 @@ def render():
                 <div style="text-align: center; padding: 12px; border: 1px solid rgba(255,255,255,0.06);
                     border-radius: 12px; background: rgba(255,255,255,0.02);">
                     <div style="font-size: 0.68em; color: #6b7280; text-transform: uppercase;
-                        letter-spacing: 0.08em;">{total_trades} Trades</div>
+                        letter-spacing: 0.08em;">{trade_hdr}</div>
                     <div style="font-size: 1.4em; font-weight: 800; color: #f0f0f0;
                         font-family: 'JetBrains Mono', monospace;">{overall_wr:.0f}% WR</div>
                 </div>
             </div>""", unsafe_allow_html=True)
 
-            eq_period = st.segmented_control(
-                "Period",
-                options=EQUITY_PERIOD_OPTIONS,
-                default="All",
-                key="eq_range_main",
-            ) or "All"
+            epc1, epc2 = st.columns((4, 1), gap="small")
+            with epc1:
+                eq_period = st.segmented_control(
+                    "Period",
+                    options=EQUITY_PERIOD_OPTIONS,
+                    default="All",
+                    key="eq_range_main",
+                ) or "All"
+            with epc2:
+                eq_scale = st.selectbox(
+                    "Scale",
+                    ["Log", "Linear"],
+                    index=0,
+                    key="eq_y_scale",
+                    help="Log scale is default for long horizons so early compounding is visible.",
+                )
             eq_dates_f, eq_vals_f = _filter_equity_series(bt_equity, eq_period)
+            if eq_period in ("1D", "5D", "1M"):
+                eq_scale = "Linear"
+            use_log = eq_scale == "Log" and all((v and v > 0) for v in eq_vals_f)
 
             eq_fig = go.Figure()
             eq_fig.add_trace(go.Scatter(
@@ -701,16 +737,28 @@ def render():
             if eq_vals_f and (y_max - y_min) < max(abs(y_max) * 1e-9, 1.0):
                 pad = max(abs(y_max) * 0.02, 1000.0)
                 y_min, y_max = y_min - pad, y_max + pad
+            _yaxis = dict(
+                gridcolor="rgba(255,255,255,0.04)",
+                tickprefix="$",
+                showgrid=True,
+                zeroline=False,
+                fixedrange=True,
+            )
+            if use_log:
+                _yaxis["type"] = "log"
+                _yaxis["tickformat"] = ","
+                _yaxis["title"] = "Portfolio (log $)"
+            else:
+                _yaxis["type"] = "linear"
+                _yaxis["tickformat"] = ","
+                _yaxis["range"] = [y_min, y_max]
             eq_fig.update_layout(
                 template="plotly_dark",
                 height=380,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(10,15,26,1)",
-                yaxis=dict(gridcolor="rgba(255,255,255,0.04)",
-                           tickprefix="$", tickformat=",",
-                           showgrid=True, zeroline=False,
-                           range=[y_min, y_max], fixedrange=True),
+                yaxis=_yaxis,
                 xaxis=dict(
                     gridcolor="rgba(255,255,255,0.03)",
                     showgrid=False,
@@ -852,11 +900,11 @@ def render():
         )
 
         # Full-width row: left two tiles a bit narrower than the explainer (~24% / ~24% / ~52%), same min-height.
-        _mh_tile_h = "min-height: 220px"
+        _mh_tile_h = "min-height: 120px"
         mh_c1, mh_c2, mh_c3 = st.columns([1.15, 1.15, 2.45], gap="small")
         with mh_c1:
             st.markdown(
-                f"""<div data-market-health-rev="{config.DASHBOARD_MARKET_HEALTH_REV}"
+                f"""<div data-market-health-id="{config.DASHBOARD_MARKET_HEALTH_ID}"
                 style="border: 1px solid {_tile_rc}44; border-radius: 12px; padding: 14px 12px;
                 background: {_tile_rc}10; box-sizing: border-box; {_mh_tile_h};
                 display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -890,7 +938,7 @@ def render():
                 display: flex; flex-direction: column; justify-content: flex-start;">
                 <div style="font-size: 0.72em; color: #8899A6; text-transform: uppercase; letter-spacing: 0.05em;
                     text-align: center;">
-                    How regime &amp; MACD are set · {config.DASHBOARD_MARKET_HEALTH_REV}</div>
+                    How regime &amp; MACD are set</div>
                 <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
                     <strong style="color: #E7E9EA;">Strong Bull</strong> — last <strong>QQQ</strong> daily close
                     <strong>above</strong> the 200-day SMA <em>and</em> 50-day SMA <strong>above</strong> the 200-day
@@ -1059,10 +1107,14 @@ def render():
             trade_markers = _collect_model_trade_markers(
                 bt_results, t0, t1, using_json_fallback
             )
+            _lab = "none" if tqqq_period in ("3Y", "5Y", "All") else "price"
+            _tqqq_log = tqqq_period == "All"
             fig = build_qqq_tqqq_model_chart(
                 tqqq_chart_df,
                 qqq_df=qqq,
                 trade_markers=trade_markers,
+                label_mode=_lab,
+                tqqq_yaxis_log=_tqqq_log,
             )
             st.plotly_chart(
                 fig,
@@ -1108,20 +1160,52 @@ crashes.** Inspired by Vibha Jha's TQQQ swing trading approach, enhanced with
 quantitative signals.
 """)
 
+        _endv = float(bt_results[-1].ending_value) if bt_results else 0.0
+        _sy = int(bt_results[0].year) if bt_results else 2011
+        _ey = int(bt_results[-1].year) if bt_results else dt.date.today().year
+        _yspan = max(1, _ey - _sy + 1)
+        if bt_results and _endv > 0:
+            if _endv >= 1e9:
+                _backtest_line = (
+                    f"Backtested: <b>$100K → ${_endv/1e9:,.2f}B</b> over ~{_yspan} years ({_sy}–{_ey})."
+                )
+            else:
+                _backtest_line = (
+                    f"Backtested: <b>$100K → ${_endv/1e6:,.1f}M</b> over ~{_yspan} years ({_sy}–{_ey})."
+                )
+        else:
+            _backtest_line = (
+                "Connect to live data to see the <b>current</b> backtested path from <b>$100K</b>."
+            )
+        r22 = year_result_for_year(bt_results, 2022) if bt_results else None
+        _sys22 = f"{r22.total_return_pct:.1f}%" if r22 else "—"
+        _closed_ira, _opn_ira = (
+            trade_count_breakdown(bt_results, live) if bt_results else (0, 0)
+        )
+        _tot_ira = _closed_ira + _opn_ira
+        _ira_line = (
+            f"The backtest’s <b>{_tot_ira}</b> round-trip / open position events "
+            f"(<b>{_closed_ira}</b> closed" + (f", <b>{_opn_ira}</b> open" if _opn_ira else "")
+            + f") over ~{_yspan} years would create major short-term tax drag"
+        ) if bt_results else (
+            "Frequent TQQQ round-trips would create significant short-term tax drag"
+        )
+
         st.markdown("### The Core Idea")
         h1, h2 = st.columns(2)
         with h1:
             st.markdown(_styled_card(
                 "TQQQ = 3x Daily Nasdaq 100",
-                """TQQQ delivers <b>3x the daily return</b> of QQQ.
+                f"""TQQQ delivers <b>3x the daily return</b> of QQQ.
                 A 10% QQQ rally = ~30% TQQQ gain. But a 10% QQQ drop = ~30% TQQQ loss.
                 The system aims to be fully invested during rallies and in cash during drops.
-                Backtested: <b>$100K → $8.6M</b> over 16 years (2011-2026)."""
+                {_backtest_line}"""
             ), unsafe_allow_html=True)
         with h2:
             st.markdown(_styled_card(
                 "Why Not Just Buy & Hold?",
-                """TQQQ buy-and-hold lost <b>-79.7% in 2022</b>. Our system lost only -18%.
+                f"""TQQQ buy-and-hold lost <b>-79.7% in 2022</b>. The model’s <b>2022
+                calendar return was {_sys22}</b> in this backtest (from the V6 engine).
                 In a 3x leveraged ETF, avoiding the big crashes matters more than catching
                 every rally. Best executed in <b>IRA/Roth accounts</b> for tax-free compounding.
                 Idle cash earns ~4.5% in SGOV while waiting."""
@@ -1236,15 +1320,14 @@ In COVID, this blocked the March 5 FTD that would have re-entered right before
 the final crash leg. The system waited until April, catching the real bottom.""")
 
         with st.expander("Why trade TQQQ in an IRA?"):
-            st.markdown("""TQQQ swing trades generate frequent short-term capital gains. In a
+            st.markdown(f"""TQQQ swing trades generate frequent short-term capital gains. In a
 taxable account, these can be taxed at **35-50%+** (federal + state).
 
 - **Traditional IRA:** Gains are tax-deferred until withdrawal
 - **Roth IRA:** Gains are **tax-free** forever
 
 This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
-The system's 72 trades over 16 years would create significant tax liability
-in a taxable account.""")
+{_ira_line} in a taxable account (numbers update with the same engine as the dashboard).""")
 
     # ══════════════════════════════════════════════════════════════
     # TAB 3: HOW TO USE THIS SITE
@@ -1314,13 +1397,25 @@ in a taxable account.""")
                 import plotly.graph_objects as go
 
                 st.markdown("#### Equity Curve — Cumulative Portfolio Value")
-                eq_period2 = st.segmented_control(
-                    "Period",
-                    options=EQUITY_PERIOD_OPTIONS,
-                    default="All",
-                    key="eq_range_hist",
-                ) or "All"
+                eqc1, eqc2 = st.columns((4, 1))
+                with eqc1:
+                    eq_period2 = st.segmented_control(
+                        "Period",
+                        options=EQUITY_PERIOD_OPTIONS,
+                        default="All",
+                        key="eq_range_hist",
+                    ) or "All"
+                with eqc2:
+                    eq_scale2 = st.selectbox(
+                        "Scale",
+                        ["Log", "Linear"],
+                        index=0,
+                        key="eq_y_scale_hist",
+                    )
                 eq_dates2_f, eq_vals2_f = _filter_equity_series(bt_equity, eq_period2)
+                if eq_period2 in ("1D", "5D", "1M"):
+                    eq_scale2 = "Linear"
+                use_log2 = eq_scale2 == "Log" and all((v and v > 0) for v in eq_vals2_f)
 
                 eq_fig2 = go.Figure()
                 eq_fig2.add_trace(go.Scatter(
@@ -1333,17 +1428,25 @@ in a taxable account.""")
                 if eq_vals2_f and (y_max2 - y_min2) < max(abs(y_max2) * 1e-9, 1.0):
                     pad2 = max(abs(y_max2) * 0.02, 1000.0)
                     y_min2, y_max2 = y_min2 - pad2, y_max2 + pad2
+                _y2 = dict(
+                    gridcolor="rgba(255,255,255,0.04)",
+                    tickprefix="$",
+                    fixedrange=True,
+                )
+                if use_log2:
+                    _y2["type"] = "log"
+                    _y2["tickformat"] = ","
+                else:
+                    _y2["type"] = "linear"
+                    _y2["tickformat"] = ","
+                    _y2["range"] = [y_min2, y_max2]
                 eq_fig2.update_layout(
                     template="plotly_dark",
                     height=450,
                     margin=dict(l=10, r=10, t=10, b=10),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(10,15,26,1)",
-                    yaxis=dict(
-                        gridcolor="rgba(255,255,255,0.04)",
-                        tickprefix="$", tickformat=",",
-                        range=[y_min2, y_max2], fixedrange=True,
-                    ),
+                    yaxis=_y2,
                     xaxis=dict(
                         gridcolor="rgba(255,255,255,0.04)",
                         fixedrange=True,
@@ -1379,19 +1482,22 @@ in a taxable account.""")
 
             # Total max drawdown
             if bt_equity:
-                all_vals = sorted(bt_equity.items())
-                peak_v = all_vals[0][1]
-                total_max_dd = 0.0
-                for d, v in all_vals:
-                    if v > peak_v:
-                        peak_v = v
-                    dd = ((v - peak_v) / peak_v) * 100
-                    if dd < total_max_dd:
-                        total_max_dd = dd
-                st.markdown(f"**Total Max Drawdown (all-time): {total_max_dd:.1f}%**")
+                tdd, tpk, ttr = compute_equity_max_drawdown(bt_equity)
+                tdd_lbl = (
+                    f"**Total Max Drawdown (all-time): {tdd:.1f}%**"
+                    f" ({tpk.strftime('%b %Y')} → {ttr.strftime('%b %Y')})"
+                    if tpk is not None and ttr is not None
+                    else f"**Total Max Drawdown (all-time): {tdd:.1f}%**"
+                )
+                st.markdown(tdd_lbl)
 
             # Key metrics
             total_trades = sum(r.num_trades for r in results)
+            closed_n2, open_n2 = trade_count_breakdown(results, live)
+            if open_n2:
+                trade_hdr2 = f"Trades ({closed_n2} closed, {open_n2} open)"
+            else:
+                trade_hdr2 = f"Trades ({closed_n2})"
             overall_wr = sum(r.win_rate_pct * r.num_trades for r in results if r.num_trades > 0) / max(total_trades, 1)
             start_val = results[0].starting_value if results else STARTING_CAPITAL
             end_val = results[-1].ending_value if results else STARTING_CAPITAL
@@ -1401,7 +1507,7 @@ in a taxable account.""")
             ic1.metric("Starting Capital", f"${start_val:,.0f}")
             ic2.metric("Current Value", f"${end_val:,.0f}")
             ic3.metric("Total Return", f"{cumulative_pct:+.1f}%")
-            ic4.metric(f"Trades ({total_trades})", f"{overall_wr:.0f}% Win Rate")
+            ic4.metric(trade_hdr2, f"{overall_wr:.0f}% Win Rate")
 
             # Per-year portfolio trace
             st.markdown("### Portfolio Trace by Year")
@@ -1625,16 +1731,34 @@ in a taxable account.""")
                         st.info("No closed or open trades to list for this period.")
 
             st.markdown("---")
-            st.markdown("""
+            st.markdown(f"""
 ##### Important Disclaimers
-- Backtest uses **simplified signal detection** — real-time signals may differ slightly due to
-  look-ahead bias and implementation details
-- **No slippage or commissions** are modeled — real returns would be slightly lower
-- The system assumes **full position on each entry** — actual sizing varies by conviction
-- **TQQQ suffers from volatility decay** in sideways/declining markets — buy-and-hold
-  comparisons are included to show the value of active management
-- Past performance does **not** guarantee future results
+- Backtest uses **simplified bar-based signal detection** — your broker’s prints, borrow,
+  and partial fills can differ. The engine evaluates rules using **only bars available through each
+  session’s official daily close** (QQQ/IXIC for regime; TQQQ for execution). A strict no-look-ahead
+  backtest for published research would additionally lag indicators by one bar; this dashboard
+  is tuned for same-close decision vs same-close mark **for transparency**, so treat edge cases near
+  inflections as **approximate**.
+- **No slippage or commissions** are modeled — real returns would be lower.
+- The system assumes **full notional on each entry** — position sizing in real life may differ.
+- **TQQQ suffers from volatility decay** in sideways/declining markets. **“TQQQ B&H”** in the tables
+  is **buy-and-hold TQQQ** in the same calendar year as the strategy, not QQQ/SPY.
+- Past performance does **not** guarantee future results.
+- Engine **v{config.ENGINE_VERSION}**; daily series via Yahoo (`yfinance`) with
+  `auto_adjust=True` (splits; dividend policy per Yahoo’s adjusted close).
 """)
+
+    _last_bt = ""
+    if bt_equity:
+        try:
+            _last_bt = pd.Timestamp(max(bt_equity.keys())).strftime("%Y-%m-%d")
+        except (TypeError, ValueError):
+            _last_bt = ""
+    _footer_data = (
+        f"Yahoo Finance (15-min delayed daily bars) · "
+        f"optional TradingView import when API keys are set · "
+        f"last backtest bar: <b>{_last_bt}</b> · engine v{config.ENGINE_VERSION}"
+    )
 
     # Footer
     st.markdown(f"""
@@ -1650,7 +1774,7 @@ in a taxable account.""")
                     @MrZzz</span>
             </a>
             <p style="color: #4b5563; font-size: 0.72em; margin-top: 10px; letter-spacing: 0.02em;">
-                Data: TradingView / Yahoo Finance &nbsp;&#183;&nbsp;
+                {_footer_data} &nbsp;&#183;&nbsp;
                 Not financial advice &nbsp;&#183;&nbsp;
                 For educational purposes only
             </p>
