@@ -225,7 +225,15 @@ def render():
         sp500 = get_sp500_data()
 
     if tqqq.empty or nasdaq.empty:
-        st.error("Unable to fetch market data. Check your internet connection.")
+        st.error("Unable to load market data (Yahoo Finance). TQQQ or Nasdaq composite came back empty.")
+        with st.expander("Troubleshooting", expanded=False):
+            st.write(
+                f"- **TQQQ series:** {'missing' if tqqq.empty else 'ok'}  \n"
+                f"- **Nasdaq (^IXIC) series:** {'missing' if nasdaq.empty else 'ok'}  \n"
+            )
+            st.caption(
+                "Try **Refresh Data** in the sidebar after a minute. Hosted apps can hit Yahoo rate limits on cold start."
+            )
         return
 
     data_date = get_latest_date(tqqq)

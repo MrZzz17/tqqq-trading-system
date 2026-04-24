@@ -109,36 +109,99 @@ def _try_tvdatafeed(ticker: str, n_bars: int = 500, interval: str = "daily") -> 
     return pd.DataFrame()
 
 
-def _fetch_yfinance(ticker: str, period: str = "2y", interval: str = "1d") -> pd.DataFrame:
-    df = yf.download(ticker, period=period, interval=interval,
-                     progress=False, auto_adjust=True)
-    if df.empty:
+def _yfinance_normalize(df: Optional[pd.DataFrame]) -> pd.DataFrame:
+    if df is None or df.empty:
         return pd.DataFrame()
     if isinstance(df.columns, pd.MultiIndex):
+        df = df.copy()
         df.columns = df.columns.get_level_values(0)
+    if "Close" not in df.columns:
+        return pd.DataFrame()
+    df = df.copy()
     df.index = pd.to_datetime(df.index)
     df = df.sort_index()
-    return df
+    for c in ("Open", "High", "Low", "Close", "Volume"):
+        if c not in df.columns and c.lower() in df.columns:
+            df = df.rename(columns={c.lower(): c})
+    # Some Yahoo responses omit OHLC; duplicate Close so downstream code always has columns.
+    for c in ("Open", "High", "Low"):
+        if c not in df.columns:
+            df[c] = df["Close"]
+    if "Volume" not in df.columns:
+        df["Volume"] = 0.0
+    return df[["Open", "High", "Low", "Close", "Volume"]]
+
+
+def _fetch_yfinance(ticker: str, period: str = "2y", interval: str = "1d") -> pd.DataFrame:
+    """
+    Yahoo path used on Streamlit Cloud and most hosts. Tries `download` then `Ticker.history`,
+    and for heavy `max` requests falls back to shorter windows if rate-limited or empty.
+    """
+    # `max` is large; if Yahoo returns empty (rate limit, cold start), step down.
+    if period == "max":
+        period_ladder = ("max", "10y", "5y", "2y")
+    else:
+        # Step down if the host rate-limits or returns an empty frame (common on cold cloud starts).
+        period_ladder = tuple(
+            dict.fromkeys((period, "1y", "6mo", "3mo"))
+        )
+
+    for per in period_ladder:
+        try:
+            df = yf.download(
+                ticker,
+                period=per,
+                interval=interval,
+                progress=False,
+                auto_adjust=True,
+                threads=False,
+            )
+            df = _yfinance_normalize(df)
+            if not df.empty and len(df) > 5:
+                return df
+        except Exception as e:
+            logger.warning("yfinance download failed %s period=%s: %s", ticker, per, e)
+        try:
+            t = yf.Ticker(ticker)
+            # No repair= — it pulls in scipy on some yfinance versions (not in our requirements).
+            df = t.history(period=per, interval=interval, auto_adjust=True)
+            df = _yfinance_normalize(df)
+            if not df.empty and len(df) > 5:
+                return df
+        except Exception as e:
+            logger.warning("yfinance Ticker.history failed %s period=%s: %s", ticker, per, e)
+    return pd.DataFrame()
+
+
+def _tradingview_enabled() -> bool:
+    """Only hit tvDatafeed when credentials (or session token) are set — faster on cloud."""
+    return bool(
+        os.environ.get("TV_USERNAME")
+        or os.environ.get("TV_PASSWORD")
+        or os.environ.get("TV_SESSION")
+    )
 
 
 @st.cache_data(ttl=config.CACHE_EXPIRY_HOURS * 3600, show_spinner=False)
 def fetch_daily(ticker: str, period: str = "2y") -> pd.DataFrame:
-    """Fetch daily OHLCV. Tries TradingView first, falls back to yfinance."""
-    n_bars = {"1y": 252, "2y": 504, "5y": 1260, "max": 5000}.get(period, 504)
-    df = _try_tvdatafeed(ticker, n_bars=n_bars, interval="daily")
-    if not df.empty:
-        return df
+    """Fetch daily OHLCV. Tries TradingView only if TV_* env is set; otherwise yfinance only."""
+    if _tradingview_enabled():
+        n_bars = {"1y": 252, "2y": 504, "5y": 1260, "max": 5000}.get(period, 504)
+        df = _try_tvdatafeed(ticker, n_bars=n_bars, interval="daily")
+        if not df.empty:
+            return df
 
     return _fetch_yfinance(ticker, period=period, interval="1d")
 
 
 @st.cache_data(ttl=config.CACHE_EXPIRY_HOURS * 3600, show_spinner=False)
 def fetch_weekly(ticker: str, period: str = "2y") -> pd.DataFrame:
-    """Fetch weekly OHLCV. Tries TradingView first, falls back to yfinance."""
-    n_bars = {"1y": 52, "2y": 104, "5y": 260, "max": 1000}.get(period, 104)
-    df = _try_tvdatafeed(ticker, n_bars=n_bars, interval="weekly")
-    if not df.empty:
-        return df
+    """Fetch weekly OHLCV. TradingView only if TV_* env is set; else yfinance."""
+    if _tradingview_enabled():
+        n_bars = {"1y": 52, "2y": 104, "5y": 260, "max": 1000}.get(period, 104)
+        df = _try_tvdatafeed(ticker, n_bars=n_bars, interval="weekly")
+        if not df.empty:
+            return df
 
     return _fetch_yfinance(ticker, period=period, interval="1wk")
 
@@ -193,7 +256,11 @@ def get_qqq_data() -> pd.DataFrame:
 
 
 def get_nasdaq_data() -> pd.DataFrame:
-    df = fetch_daily(config.NASDAQ_COMPOSITE, period="2y")
+    df = pd.DataFrame()
+    for sym in (config.NASDAQ_COMPOSITE, "IXIC"):
+        df = fetch_daily(sym, period="2y")
+        if not df.empty:
+            break
     if df.empty:
         return df
     df = add_moving_averages(df)
