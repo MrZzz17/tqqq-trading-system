@@ -4,6 +4,7 @@ Rules-based TQQQ buy/sell signal system.
 """
 
 import datetime as dt
+import html
 from typing import List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
@@ -179,6 +180,20 @@ def _load_backtest_json_fallback():
 REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 
+def _regime_tile_hover_title(regime, index_label: str) -> str:
+    """Long hover text for Nasdaq / SPY pulse tiles (native title tooltip)."""
+    return (
+        f"This tile uses {index_label} only (not QQQ or TQQQ). "
+        "Uptrend: fewer than 4 distribution days in the last 25 sessions and the close is above the 50-day moving average. "
+        "Caution: uptrend under pressure - either 4 or more distribution days in that window "
+        "(a day counts if the index falls more than 0.2% on volume higher than the prior session, "
+        "and it is not dropped after price rallies 5% or more from that day's close), "
+        "or the close is below the 50-day average while still above the 200-day. "
+        "Correction: 5 or more distribution days or the close is below the 200-day average. "
+        f"Right now: {regime.description}"
+    )
+
+
 LOGO_URL = "https://pbs.twimg.com/profile_images/1959893019509071872/Xa6rYCoN_400x400.jpg"
 TWITTER_URL = "https://x.com/__MrZzz__"
 
@@ -321,6 +336,16 @@ def render():
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
         nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
+        _reg_hint = (
+            "font-family:inherit;cursor:help;"
+            "text-decoration:underline dotted rgba(255,255,255,0.35);text-underline-offset:3px;"
+        )
+        _nq_hover = html.escape(
+            _regime_tile_hover_title(nasdaq_regime, "Nasdaq Composite (^IXIC)"), quote=True
+        )
+        _sp_hover = html.escape(
+            _regime_tile_hover_title(sp_regime, "SPY (S&P 500)"), quote=True
+        )
 
         def _pct_pill(v: float) -> str:
             up = v >= 0
@@ -364,11 +389,11 @@ def render():
   </div>
   <div style="{_mc}">
     <div style="{_ml}">Nasdaq</div>
-    <div style="{_mreg};margin-top:4px;"><span style="font-family:inherit;">{nq_icon} {nq_short}</span></div>
+    <div style="{_mreg};margin-top:4px;"><span style="{_reg_hint}" title="{_nq_hover}">{nq_icon} {nq_short}</span></div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">SPY</div>
-    <div style="{_mreg};margin-top:4px;"><span style="font-family:inherit;">{sp_icon} {sp_short}</span></div>
+    <div style="{_mreg};margin-top:4px;"><span style="{_reg_hint}" title="{_sp_hover}">{sp_icon} {sp_short}</span></div>
   </div>
 </div>
 """, unsafe_allow_html=True)
