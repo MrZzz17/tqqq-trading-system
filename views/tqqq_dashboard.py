@@ -181,16 +181,15 @@ REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 
 def _regime_tile_hover_title(regime, index_label: str) -> str:
-    """Long hover text for Nasdaq / SPY pulse tiles (native title tooltip)."""
+    """Hover text for Nasdaq / SPY pulse tiles (native title tooltip; keep short and scannable)."""
     return (
-        f"This tile uses {index_label} only (not QQQ or TQQQ). "
-        "Uptrend: fewer than 4 distribution days in the last 25 sessions and the close is above the 50-day moving average. "
-        "Caution: uptrend under pressure - either 4 or more distribution days in that window "
-        "(a day counts if the index falls more than 0.2% on volume higher than the prior session, "
-        "and it is not dropped after price rallies 5% or more from that day's close), "
-        "or the close is below the 50-day average while still above the 200-day. "
-        "Correction: 5 or more distribution days or the close is below the 200-day average. "
-        f"Right now: {regime.description}"
+        f"Now · {regime.description} "
+        f"· {index_label} only (not QQQ/TQQQ). "
+        "Uptrend · <4 distribution days in 25 sessions and price above the 50-day avg. "
+        "Caution · 4+ distribution days, or below the 50-day avg while still above the 200-day. "
+        "Correction · 5+ distribution days or below the 200-day avg. "
+        "A distribution day · Close down >0.2% on higher volume than the prior day; "
+        "falls off the count after a 5%+ rally from that day's close."
     )
 
 
