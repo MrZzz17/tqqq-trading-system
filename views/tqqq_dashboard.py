@@ -182,13 +182,14 @@ REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
 
 def _regime_tile_hover_title(regime, index_label: str) -> str:
     """Hover text for Nasdaq / SPY pulse tiles (native title tooltip; keep short and scannable)."""
+    # Avoid raw < and > in copy so HTML title= attributes never confuse the parser after sanitization.
     return (
         f"Now · {regime.description} "
         f"· {index_label} only (not QQQ/TQQQ). "
-        "Uptrend · <4 distribution days in 25 sessions and price above the 50-day avg. "
+        "Uptrend · Fewer than 4 distribution days in 25 sessions and price above the 50-day avg. "
         "Caution · 4+ distribution days, or below the 50-day avg while still above the 200-day. "
         "Correction · 5+ distribution days or below the 200-day avg. "
-        "A distribution day · Close down >0.2% on higher volume than the prior day; "
+        "A distribution day · Close down over 0.2% on higher volume than the prior day; "
         "falls off the count after a 5%+ rally from that day's close."
     )
 
@@ -335,7 +336,8 @@ def render():
         sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
         nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
         sp_icon = REGIME_ICONS.get(sp_regime.color, '')
-        _reg_hint = (
+        _reg_hint_icon = "font-family:inherit;cursor:help;"
+        _reg_hint_text = (
             "font-family:inherit;cursor:help;"
             "text-decoration:underline dotted rgba(255,255,255,0.35);text-underline-offset:3px;"
         )
@@ -388,11 +390,17 @@ def render():
   </div>
   <div style="{_mc}">
     <div style="{_ml}">Nasdaq</div>
-    <div style="{_mreg};margin-top:4px;"><span style="{_reg_hint}" title="{_nq_hover}">{nq_icon} {nq_short}</span></div>
+    <div style="{_mreg};margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:0.35em;flex-wrap:wrap;">
+      <span style="{_reg_hint_icon}" title="{_nq_hover}">{nq_icon}</span>
+      <span style="{_reg_hint_text}" title="{_nq_hover}">{nq_short}</span>
+    </div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">SPY</div>
-    <div style="{_mreg};margin-top:4px;"><span style="{_reg_hint}" title="{_sp_hover}">{sp_icon} {sp_short}</span></div>
+    <div style="{_mreg};margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:0.35em;flex-wrap:wrap;">
+      <span style="{_reg_hint_icon}" title="{_sp_hover}">{sp_icon}</span>
+      <span style="{_reg_hint_text}" title="{_sp_hover}">{sp_short}</span>
+    </div>
   </div>
 </div>
 """, unsafe_allow_html=True)
