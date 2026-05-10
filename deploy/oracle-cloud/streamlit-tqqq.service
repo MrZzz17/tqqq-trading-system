@@ -1,0 +1,16 @@
+[Unit]
+Description=TQQQ Trading System (Streamlit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=DEPLOY_USER
+WorkingDirectory=DEPLOY_APP_ROOT
+Environment=PATH=DEPLOY_APP_ROOT/.venv/bin:/usr/bin:/bin
+ExecStart=DEPLOY_APP_ROOT/.venv/bin/streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true --browser.gatherUsageStats false
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

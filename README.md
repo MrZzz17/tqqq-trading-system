@@ -10,6 +10,10 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+## Always-on hosting (free Oracle ARM VM)
+
+Streamlit Community Cloud sleeps idle apps. To run **24/7 at ~$0**, use Oracle **Always Free** Ampere with systemd: see **[deploy/oracle-cloud/README.md](deploy/oracle-cloud/README.md)**.
+
 ## Phase 1: TQQQ Dashboard (Current)
 
 - **Market pulse** — Nasdaq & SPY regime labels (distribution days + MA structure)
