@@ -56,6 +56,17 @@ def _filter_tqqq_by_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
     return sub.copy()
 
 
+def _session_day_timestamp(ts_like) -> pd.Timestamp:
+    """
+    Naive midnight comparable across Yahoo (often tz-aware UTC index) and trade YYYY-MM-DD strings.
+    Avoids TypeError when comparing tz-aware Timestamps to naive ones (pandas 2.x).
+    """
+    t = pd.Timestamp(ts_like)
+    if t.tzinfo is not None:
+        return pd.Timestamp(t.tz_convert("UTC").date()).normalize()
+    return t.normalize()
+
+
 def _collect_model_trade_markers(
     bt_results: list,
     t0,
@@ -66,12 +77,12 @@ def _collect_model_trade_markers(
     out = []
     if not bt_results:
         return out
-    t0_ts = pd.Timestamp(t0).normalize()
-    t1_ts = pd.Timestamp(t1).normalize()
+    t0_ts = _session_day_timestamp(t0)
+    t1_ts = _session_day_timestamp(t1)
     for r in bt_results:
         for t in r.trades:
-            ed = pd.Timestamp(t.entry_date).normalize()
-            xd = pd.Timestamp(t.exit_date).normalize()
+            ed = _session_day_timestamp(t.entry_date)
+            xd = _session_day_timestamp(t.exit_date)
             if t0_ts <= ed <= t1_ts:
                 out.append(
                     {
@@ -92,7 +103,7 @@ def _collect_model_trade_markers(
                 )
         if not using_json_fallback and getattr(r, "open_leg", None):
             ol = r.open_leg
-            ed = pd.Timestamp(ol["entry_date"]).normalize()
+            ed = _session_day_timestamp(ol["entry_date"])
             if t0_ts <= ed <= t1_ts:
                 out.append(
                     {

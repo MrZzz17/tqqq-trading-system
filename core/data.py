@@ -119,6 +119,9 @@ def _yfinance_normalize(df: Optional[pd.DataFrame]) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.copy()
     df.index = pd.to_datetime(df.index)
+    # Yahoo often returns tz-aware UTC midnight; naive calendar dates match trade strings and pandas 2 comparisons.
+    if getattr(df.index, "tz", None) is not None:
+        df.index = pd.to_datetime(df.index.tz_convert("UTC").strftime("%Y-%m-%d"))
     df = df.sort_index()
     for c in ("Open", "High", "Low", "Close", "Volume"):
         if c not in df.columns and c.lower() in df.columns:
