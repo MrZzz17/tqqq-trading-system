@@ -16,7 +16,7 @@ Streamlit Community Cloud sleeps idle apps. To run **24/7 at ~$0**, use Oracle *
 
 ## Phase 1: TQQQ Dashboard (Current)
 
-- **Market pulse** — Nasdaq & SPY regime labels (distribution days + MA structure)
+- **Unified system state** — every label/tile derives from the V6 engine (`core/system_state.py`); distribution days shown as context only
 - **V6 live card** — Buy / Sell / Flat from the last daily close; open-position detail when long
 - **Backtest hero & equity curve** — Cumulative performance with Period control (1D … All)
 - **Market Health** — QQQ/SPY vs MAs; regime + weekly MACD explanation tiles

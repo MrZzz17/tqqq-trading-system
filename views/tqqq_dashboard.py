@@ -139,9 +139,8 @@ from core.data import (
     get_tqqq_data, get_qqq_data, get_nasdaq_data, get_sp500_data,
     get_52_week_high, get_current_price, get_latest_date,
 )
-from core.indicators import detect_market_regime
-from core.signals import detect_follow_through_day
 from core.charts import build_qqq_tqqq_model_chart
+from core.system_state import get_system_state
 from core.backtest import (
     get_dashboard_state,
     STARTING_CAPITAL,
@@ -188,21 +187,21 @@ def _load_backtest_json_fallback():
         return [], {}
 
 
-REGIME_ICONS = {"green": "🟢", "yellow": "🟡", "red": "🔴"}
+# Hover copy for the two engine-driven header tiles. Avoid raw < and > so HTML
+# title= attributes never confuse the parser after sanitization.
+REGIME_TILE_HOVER = (
+    "Engine regime — the same V6 rules that generate every trade. "
+    "Strong Bull · QQQ close above the 200-day SMA and weekly MACD positive; target 100%. "
+    "Cautious Bull · above the 200-day but weekly MACD negative; target 50%. "
+    "Bear · below the 200-day; cash (FTD probe entries only)."
+)
 
-
-def _regime_tile_hover_title(regime, index_label: str) -> str:
-    """Hover text for Nasdaq / SPY pulse tiles (native title tooltip; keep short and scannable)."""
-    # Avoid raw < and > in copy so HTML title= attributes never confuse the parser after sanitization.
-    return (
-        f"Now · {regime.description} "
-        f"· {index_label} only (not QQQ/TQQQ). "
-        "Uptrend · Fewer than 4 distribution days in 25 sessions and price above the 50-day avg. "
-        "Caution · 4+ distribution days, or below the 50-day avg while still above the 200-day. "
-        "Correction · 5+ distribution days or below the 200-day avg. "
-        "A distribution day · Close down over 0.2% on higher volume than the prior day; "
-        "falls off the count after a 5%+ rally from that day's close."
-    )
+PRESSURE_TILE_HOVER = (
+    "Context only — does NOT drive trades. IBD-style distribution days on the Nasdaq: "
+    "closes down over 0.2% on higher volume within the last 25 sessions "
+    "(a day falls off after a 5%+ rally from its close). "
+    "Low · fewer than 4. Elevated · 4. High · 5 or more."
+)
 
 
 LOGO_URL = "https://pbs.twimg.com/profile_images/1959893019509071872/Xa6rYCoN_400x400.jpg"
@@ -300,6 +299,8 @@ def render():
 
     # ── Live engine: same Yahoo bars for alerts, equity curve, and trade list (cached together) ──
     live, bt_results, bt_equity = get_dashboard_state()
+    # Unified system state — every label/tile below derives from this one engine-rule snapshot
+    state = get_system_state()
     using_json_fallback = False
     if not bt_equity:
         bt_results, bt_equity = _load_backtest_json_fallback()
@@ -326,9 +327,7 @@ def render():
     # TAB 1: DASHBOARD
     # ══════════════════════════════════════════════════════════════
     with tab_dash:
-        # ── Market Status + Action (VERY TOP) ──
-        nasdaq_regime = detect_market_regime(nasdaq)
-        sp_regime = detect_market_regime(sp500)
+        # ── Market Status + Action (VERY TOP) — engine regime, not a parallel classifier ──
         tqqq_delta = (tqqq.iloc[-1]['Close'] - tqqq.iloc[-2]['Close']) / tqqq.iloc[-2]['Close'] * 100
         qqq_delta = (qqq.iloc[-1]['Close'] - qqq.iloc[-2]['Close']) / qqq.iloc[-2]['Close'] * 100
         if live:
@@ -340,24 +339,20 @@ def render():
                                   / float(sub.iloc[-2]["Close"]) * 100)
             except Exception:
                 pass
-        REGIME_SHORT = {"Confirmed Uptrend": "Uptrend", "Uptrend Under Pressure": "Caution",
-                        "Market in Correction": "Correction"}
         _tqqq_show = float(live.tqqq_close) if live else tqqq_price
-        nq_short = REGIME_SHORT.get(nasdaq_regime.status, nasdaq_regime.status)
-        sp_short = REGIME_SHORT.get(sp_regime.status, sp_regime.status)
-        nq_icon = REGIME_ICONS.get(nasdaq_regime.color, '')
-        sp_icon = REGIME_ICONS.get(sp_regime.color, '')
+        # Engine regime tile + selling-pressure context chip (one system; pressure is context only)
+        _regime_txt = state.regime_label if state else "N/A"
+        _regime_icon = {"Strong Bull": "🟢", "Cautious Bull": "🟡", "Bear": "🔴"}.get(_regime_txt, "")
+        _press_txt = state.selling_pressure if state else "N/A"
+        _press_icon = {"Low": "🟢", "Elevated": "🟡", "High": "🔴"}.get(_press_txt, "")
+        _press_detail = f"{state.nasdaq_dist_days} dist days · context only" if state else ""
         _reg_hint_icon = "font-family:inherit;cursor:help;"
         _reg_hint_text = (
             "font-family:inherit;cursor:help;"
             "text-decoration:underline dotted rgba(255,255,255,0.35);text-underline-offset:3px;"
         )
-        _nq_hover = html.escape(
-            _regime_tile_hover_title(nasdaq_regime, "Nasdaq Composite (^IXIC)"), quote=True
-        )
-        _sp_hover = html.escape(
-            _regime_tile_hover_title(sp_regime, "SPY (S&P 500)"), quote=True
-        )
+        _nq_hover = html.escape(REGIME_TILE_HOVER, quote=True)
+        _sp_hover = html.escape(PRESSURE_TILE_HOVER, quote=True)
 
         def _pct_pill(v: float) -> str:
             up = v >= 0
@@ -400,18 +395,19 @@ def render():
     </div>
   </div>
   <div style="{_mc}">
-    <div style="{_ml}">Nasdaq</div>
+    <div style="{_ml}">Engine Regime</div>
     <div style="{_mreg};margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:0.35em;flex-wrap:wrap;">
-      <span style="{_reg_hint_icon}" title="{_nq_hover}">{nq_icon}</span>
-      <span style="{_reg_hint_text}" title="{_nq_hover}">{nq_short}</span>
+      <span style="{_reg_hint_icon}" title="{_nq_hover}">{_regime_icon}</span>
+      <span style="{_reg_hint_text}" title="{_nq_hover}">{_regime_txt}</span>
     </div>
   </div>
   <div style="{_mc}">
-    <div style="{_ml}">SPY</div>
+    <div style="{_ml}">Selling Pressure</div>
     <div style="{_mreg};margin-top:4px;display:inline-flex;align-items:center;justify-content:center;gap:0.35em;flex-wrap:wrap;">
-      <span style="{_reg_hint_icon}" title="{_sp_hover}">{sp_icon}</span>
-      <span style="{_reg_hint_text}" title="{_sp_hover}">{sp_short}</span>
+      <span style="{_reg_hint_icon}" title="{_sp_hover}">{_press_icon}</span>
+      <span style="{_reg_hint_text}" title="{_sp_hover}">{_press_txt}</span>
     </div>
+    <div style="font-size:0.62em;color:#6b7280;margin-top:2px;">{_press_detail}</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -428,34 +424,34 @@ def render():
             _cap_mid = f"{data_date.strftime('%b %d, %Y')} · Yahoo daily close"
         st.caption(f"{_cap_mid} · loaded {_loaded_et}")
 
-        # Live action status
-        qqq_close_val = float(qqq.iloc[-1]["Close"])
-        qqq_sma200_val = qqq.iloc[-1].get("SMA_200")
-        qqq_above_200_now = (qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
-                             and qqq_close_val > float(qqq_sma200_val))
-        w_macd_val = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
-        macd_pos_now = w_macd_val is not None and not pd.isna(w_macd_val) and float(w_macd_val) > 0
-
-        # Regime computation (needed for position sizing bar under BUY/SELL card)
-        qqq_sma50_val = qqq.iloc[-1].get("SMA_50")
-        above_200 = (qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
-                     and qqq_close_val > float(qqq_sma200_val))
-        golden = (qqq_sma50_val is not None and not pd.isna(qqq_sma50_val)
-                  and qqq_sma200_val is not None and not pd.isna(qqq_sma200_val)
-                  and float(qqq_sma50_val) > float(qqq_sma200_val))
-        if golden and above_200:
-            regime_str = "Strong Bull"
-            regime_color = "#17BF63"
-            exit_desc = "Holding through normal pullbacks. Exit on 2 closes below QQQ 50-day."
-        elif above_200:
-            regime_str = "Bull"
-            regime_color = "#FFAD1F"
-            exit_desc = "Cautious hold. Exit on 2 closes below QQQ 21-day EMA."
+        # Live action status — all regime inputs come from the unified engine state
+        if state:
+            qqq_close_val = state.qqq_close
+            qqq_above_200_now = state.above_200
+            macd_pos_now = state.macd_pos
+            above_200 = state.above_200
+            regime_str = state.regime_label
+            regime_color = state.regime_color
+            alloc_label = f"{state.target_alloc_pct}%" if state.target_alloc_pct else "0% (cash)"
         else:
-            regime_str = "Bear"
-            regime_color = "#E0245E"
-            exit_desc = "QQQ below 200-day. Stay in cash."
-        alloc_label = "100%" if (golden and above_200) else ("50%" if above_200 else "0% (cash)")
+            # Data-outage fallback: engine state unavailable, recompute from quote data
+            qqq_close_val = float(qqq.iloc[-1]["Close"])
+            _sma200_raw = qqq.iloc[-1].get("SMA_200")
+            qqq_above_200_now = (_sma200_raw is not None and not pd.isna(_sma200_raw)
+                                 and qqq_close_val > float(_sma200_raw))
+            _w_macd_raw = qqq.iloc[-1].get("Weekly_MACD") if "Weekly_MACD" in qqq.columns else None
+            macd_pos_now = _w_macd_raw is not None and not pd.isna(_w_macd_raw) and float(_w_macd_raw) > 0
+            above_200 = qqq_above_200_now
+            regime_str = ("Strong Bull" if (above_200 and macd_pos_now)
+                          else ("Cautious Bull" if above_200 else "Bear"))
+            regime_color = {"Strong Bull": "#17BF63", "Cautious Bull": "#FFAD1F"}.get(regime_str, "#E0245E")
+            alloc_label = "100%" if (above_200 and macd_pos_now) else ("50%" if above_200 else "0% (cash)")
+        # Engine-true exit rules (V6 has exactly these three)
+        if above_200:
+            exit_desc = ("Exits: QQQ close below the 200-day, or 12% trailing stop "
+                         "(armed while QQQ is 3%+ above the 200-day).")
+        else:
+            exit_desc = "QQQ below 200-day. Stay in cash (FTD probe entries only)."
 
         all_trades_flat = [t for r in bt_results for t in r.trades]
         lt = all_trades_flat[-1] if all_trades_flat else None
@@ -479,9 +475,17 @@ def render():
                     f"(TQQQ ≈ **${ex_px:,.2f}**)."
                 )
             else:
-                st.warning(
-                    f"**STAY IN CASH** — Flat after **{live.as_of_date}** close. Wait for entry rules (FTD / MACD / 200d)."
-                )
+                _cd = state.cooldown_until if state else None
+                _cd_active = bool(_cd and dt.date.today() < dt.datetime.strptime(_cd, "%Y-%m-%d").date())
+                if _cd_active:
+                    st.warning(
+                        f"**STAY IN CASH** — Flat after **{live.as_of_date}** close. "
+                        f"Post-exit cooldown blocks entries until **{_cd}** (an FTD can override it early)."
+                    )
+                else:
+                    st.warning(
+                        f"**STAY IN CASH** — Flat after **{live.as_of_date}** close. Wait for entry rules (FTD / MACD / 200d)."
+                    )
 
             if live.in_position:
                 pct_deployed = live.allocation_pct
@@ -543,7 +547,7 @@ def render():
                             border-left: 2px solid rgba(52,211,153,0.3);">
                             <div style="{_gh} letter-spacing: 0.08em;">Why</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; line-height: 1.6; font-weight: 600; margin-top: 6px;">
-                                {why_text} QQQ above 200-day SMA.</div>
+                                {why_text} QQQ {'above' if above_200 else 'below'} 200-day SMA.</div>
                             <div style="font-size: 1.0em; color: #f0f0f0; margin-top: 6px; line-height: 1.6; font-weight: 600;">
                                 {regime_str}: {exit_desc} Allocation: {alloc_label}</div>
                             <div style="font-size: 0.78em; color: #6b7280; margin-top: 6px;">
@@ -558,11 +562,10 @@ def render():
                 trade_pnl = (lt.portfolio_after - lt.portfolio_before) if match_lt else 0.0
                 ret_pct = lt.return_pct if match_lt else 0.0
                 dur = lt.duration_days if match_lt else 0
-                sell_why = ('QQQ closed below 200-day SMA for 2 consecutive days — bear market confirmed.'
+                # V6 has exactly two sell rules: 200-day break (single close) or the 12% trail
+                sell_why = ('QQQ closed below its 200-day SMA — bear regime, exited to cash.'
                             if not qqq_above_200_now
-                            else ('12% trailing stop triggered — portfolio dropped from peak.'
-                                  if match_lt and lt.return_pct < -5
-                                  else 'QQQ broke below 200-day SMA — exited to protect capital.'))
+                            else '12% trailing stop triggered — portfolio dropped 12% from its peak.')
                 sell_next = ('Watching for re-entry signal' if qqq_above_200_now
                              else 'Staying in cash until QQQ reclaims 200-day')
                 st.markdown(f"""<div style="border: 2px solid {act_color}44; border-radius: 16px;
@@ -916,32 +919,24 @@ def render():
                 </div>
             </div>""", unsafe_allow_html=True)
 
-        # Weekly MACD detail for health grid
-        w_macd = qqq.iloc[-1].get("Weekly_MACD")
-        w_macd_sig = qqq.iloc[-1].get("Weekly_MACD_Signal")
-        macd_val = float(w_macd) if w_macd is not None and not pd.isna(w_macd) else None
-        macd_sig_val = float(w_macd_sig) if w_macd_sig is not None and not pd.isna(w_macd_sig) else None
-
+        # Weekly MACD detail for health grid — engine's weekly bars (same values the rules see)
+        macd_val = state.macd_value if state else None
         macd_color = "#17BF63" if (macd_val is not None and macd_val > 0) else "#E0245E"
         macd_label = "Bullish" if (macd_val is not None and macd_val > 0) else "Bearish"
-        macd_trend = (
-            "Rising"
-            if (macd_val is not None and macd_sig_val is not None and macd_val > macd_sig_val)
-            else "Falling"
-        )
+        macd_trend = "Rising" if (state and state.macd_rising) else "Falling"
         macd_val_display = f"{macd_val:+.1f}" if macd_val is not None else "N/A"
 
         # Tile accent — keyed by regime_str only (avoids NameError if regime_color ever missing)
-        _tile_rc = {"Strong Bull": "#17BF63", "Bull": "#FFAD1F", "Bear": "#E0245E"}.get(regime_str, "#657786")
+        _tile_rc = {"Strong Bull": "#17BF63", "Cautious Bull": "#FFAD1F", "Bear": "#E0245E"}.get(regime_str, "#657786")
 
-        if golden and above_200:
-            _strong_bull_status = "Regime now: Strong Bull (both QQQ conditions met)."
-        elif above_200:
+        if regime_str == "Strong Bull":
+            _strong_bull_status = "Regime now: Strong Bull — above 200-day with weekly MACD positive (target 100%)."
+        elif regime_str == "Cautious Bull":
             _strong_bull_status = (
-                "Regime now: Bull — above 200-day; 50-day not above 200-day yet."
+                "Regime now: Cautious Bull — above 200-day but weekly MACD negative (target 50%)."
             )
         else:
-            _strong_bull_status = "Regime now: Bear — QQQ below 200-day SMA."
+            _strong_bull_status = "Regime now: Bear — QQQ below 200-day SMA (cash; FTD probe only)."
 
         _macd_expl = "Bullish" if (macd_val is not None and macd_val > 0) else "Bearish"
         _macd_now = (
@@ -992,8 +987,10 @@ def render():
                     How regime &amp; MACD are set</div>
                 <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
                     <strong style="color: #E7E9EA;">Strong Bull</strong> — last <strong>QQQ</strong> daily close
-                    <strong>above</strong> the 200-day SMA <em>and</em> 50-day SMA <strong>above</strong> the 200-day
-                    (golden cross). <strong>Bull</strong> / <strong>Bear</strong> if only price vs 200-day differs.
+                    <strong>above</strong> the 200-day SMA <em>and</em> weekly MACD <strong>positive</strong>
+                    (engine targets 100%). <strong>Cautious Bull</strong> — above the 200-day but MACD negative
+                    (targets 50%). <strong>Bear</strong> — below the 200-day (cash; FTD probe only).
+                    These are the exact V6 entry rules — the same regime drives every tile on this page.
                 </div>
                 <div style="font-size: 0.86em; color: #cbd5e1; margin-top: 10px; line-height: 1.55;">
                     <strong style="color: #E7E9EA;">Weekly MACD Bullish</strong> — on <strong>QQQ</strong> weekly bars,
@@ -1018,22 +1015,27 @@ def render():
         # ── System Signals (what actually drives decisions) ──
         st.markdown("### System Signals")
 
-        ftd = detect_follow_through_day(nasdaq)
-
-        # Entry signals
+        # Entry signals — every value below comes from the unified engine state
         s1, s2, s3 = st.columns(3)
         with s1:
-            ftd_active = ftd is not None
+            ftd_active = bool(state and state.ftd_active)
+            _ftd_cd = state.ftd_cooldown_until if state else None
+            _ftd_blocked = bool(_ftd_cd and dt.date.today() < dt.datetime.strptime(_ftd_cd, "%Y-%m-%d").date())
             ftd_bg = "#34d39922" if ftd_active else "rgba(255,255,255,0.02)"
             ftd_border = "#34d39944" if ftd_active else "rgba(255,255,255,0.06)"
             ftd_badge = "DETECTED" if ftd_active else "CLEAR"
             ftd_badge_color = "#34d399" if ftd_active else "#6b7280"
+            if ftd_active:
+                ftd_text = "Engine FTD fired on the last bar — Nasdaq gained 1.25%+ on higher volume, day 4+ off the low after a 7%+ correction."
+            elif _ftd_blocked:
+                ftd_text = f"No FTD on the last bar. FTD entries blocked by engine cooldown until {_ftd_cd}."
+            else:
+                ftd_text = "No FTD on the last bar. Requires a 7%+ Nasdaq correction, then a 1.25%+ gain on higher volume on day 4+ of the rally attempt (engine checks a 60-session window)."
             st.markdown(f"""<div style="border: 1px solid {ftd_border}; background: {ftd_bg};
                 border-radius: 14px; padding: 16px; min-height: 120px;">
                 <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
                     Follow-Through Day</div>
-                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
-                    {'Nasdaq gained ' + f'{ftd.details}' if ftd_active else 'No FTD in last 30 sessions. Requires 7%+ Nasdaq correction + 1.25% rally on day 4+.'}</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">{ftd_text}</div>
                 <span style="background: {ftd_badge_color}22; color: {ftd_badge_color}; padding: 3px 12px;
                     border-radius: 20px; font-size: 0.72em; font-weight: 600;
                     border: 1px solid {ftd_badge_color}44;">{ftd_badge}</span>
@@ -1045,7 +1047,9 @@ def render():
             macd_border = "#34d39944" if macd_pos_now else "#f8717144"
             macd_badge = "POSITIVE" if macd_pos_now else "NEGATIVE"
             macd_badge_c = "#34d399" if macd_pos_now else "#f87171"
-            macd_desc = "Weekly MACD above zero — bullish trend confirmed. System at 100%." if macd_pos_now else "Weekly MACD below zero — trend weakening. System at 50% or cash."
+            macd_desc = ("Weekly MACD above zero — bullish trend confirmed. Entries target 100%."
+                         if macd_pos_now else
+                         "Weekly MACD below zero — trend weakening. Entries target 50% (or cash below the 200-day).")
             st.markdown(f"""<div style="border: 1px solid {macd_border}; background: {macd_bg};
                 border-radius: 14px; padding: 16px; min-height: 120px;">
                 <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
@@ -1062,8 +1066,8 @@ def render():
             above_bg = "#34d39922" if above_200 else "#f8717122"
             above_border = "#34d39944" if above_200 else "#f8717144"
             above_badge = "ABOVE" if above_200 else "BELOW"
-            sma200_val = float(qqq_sma200_val) if qqq_sma200_val is not None and not pd.isna(qqq_sma200_val) else 0
-            pct_from_200 = ((qqq_close_val - sma200_val) / sma200_val * 100) if sma200_val > 0 else 0
+            sma200_val = state.sma200 if state else 0
+            pct_from_200 = state.pct_above_200 if state else 0
             above_desc = f"QQQ at ${qqq_close_val:.2f}, {pct_from_200:+.1f}% from 200-day (${sma200_val:.2f}). {'Bull market — entries allowed.' if above_200 else 'Bear market — cash only (except FTD).'}"
             st.markdown(f"""<div style="border: 1px solid {above_border}; background: {above_bg};
                 border-radius: 14px; padding: 16px; min-height: 120px;">
@@ -1081,27 +1085,19 @@ def render():
         e1, e2, e3 = st.columns(3)
 
         with e1:
-            # Check consecutive closes below 200-day
-            below_count = 0
-            if len(qqq) >= 2:
-                for j in range(1, min(3, len(qqq))):
-                    row = qqq.iloc[-j]
-                    s = row.get("SMA_200")
-                    if s is not None and not pd.isna(s) and float(row["Close"]) < float(s):
-                        below_count += 1
-                    else:
-                        break
-            exit_200_triggered = below_count >= 2
-            exit_200_c = "#f87171" if exit_200_triggered else ("#fbbf24" if below_count == 1 else "#34d399")
-            exit_200_badge = "EXIT" if exit_200_triggered else (f"{below_count}/2 CLOSES" if below_count > 0 else "CLEAR")
+            # Engine rule: exit on the FIRST QQQ close below the 200-day SMA
+            exit_200_triggered = bool(state and state.exit_200_active)
+            _near_200 = bool(state and not exit_200_triggered and state.pct_above_200 < 1.0)
+            exit_200_c = "#f87171" if exit_200_triggered else ("#fbbf24" if _near_200 else "#34d399")
+            exit_200_badge = "EXIT" if exit_200_triggered else ("NEAR" if _near_200 else "CLEAR")
             st.markdown(f"""<div style="border: 1px solid {exit_200_c}44; background: {exit_200_c}11;
                 border-radius: 14px; padding: 16px; min-height: 120px;">
                 <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
                     200-Day SMA Exit</div>
                 <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
-                    {'EXIT TRIGGERED — QQQ closed below 200-day for 2 consecutive days.' if exit_200_triggered else
-                     (f'Warning: {below_count} close below 200-day. One more triggers exit.' if below_count == 1 else
-                      'QQQ holding above 200-day SMA. No exit signal.')}</div>
+                    {'EXIT — QQQ closed below its 200-day SMA. The engine sells on the first close below.' if exit_200_triggered else
+                     (f'QQQ only {pct_from_200:+.1f}% above the 200-day. One close below triggers the exit.' if _near_200 else
+                      f'QQQ {pct_from_200:+.1f}% above the 200-day SMA. Exit fires on the first close below.')}</div>
                 <span style="background: {exit_200_c}22; color: {exit_200_c}; padding: 3px 12px;
                     border-radius: 20px; font-size: 0.72em; font-weight: 600;
                     border: 1px solid {exit_200_c}44;">{exit_200_badge}</span>
@@ -1109,16 +1105,25 @@ def render():
             </div>""", unsafe_allow_html=True)
 
         with e2:
-            # Trailing stop status
-            stop_active = pct_from_200 >= 3.0 if above_200 else False
+            # Trailing stop status — armed threshold + live distance from the engine's own peak
+            stop_active = bool(state and state.trail_armed)
+            _trail_dd = state.trail_dd_pct if state else None
             stop_c = "#34d399" if not stop_active else "#818cf8"
+            if stop_active and _trail_dd is not None:
+                _near_trail = _trail_dd <= -8.0
+                stop_c = "#f87171" if _near_trail else "#818cf8"
+                trail_text = (f"ACTIVE — portfolio {_trail_dd:+.1f}% from its engine peak. "
+                              f"Exit fires at -12%.")
+            elif stop_active:
+                trail_text = (f"ARMED — QQQ is {pct_from_200:.1f}% above the 200-day (3%+ threshold). "
+                              f"Fires if the portfolio drops 12% from its peak while long.")
+            else:
+                trail_text = "INACTIVE — QQQ is within 3% of the 200-day. Trailing stop disabled to avoid chop."
             st.markdown(f"""<div style="border: 1px solid {stop_c}44; background: {stop_c}11;
                 border-radius: 14px; padding: 16px; min-height: 120px;">
                 <div style="font-weight: 700; font-size: 0.88em; color: #f0f0f0;">
                     12% Trailing Stop</div>
-                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">
-                    {'ACTIVE — QQQ is ' + f'{pct_from_200:.1f}% above 200-day (>3% threshold). Exit fires if portfolio drops 12% from peak.' if stop_active else
-                     'INACTIVE — QQQ is within 3% of 200-day. Trailing stop disabled to avoid chop.'}</div>
+                <div style="font-size: 0.75em; color: #9ca3af; margin: 6px 0;">{trail_text}</div>
                 <span style="background: {stop_c}22; color: {stop_c}; padding: 3px 12px;
                     border-radius: 20px; font-size: 0.72em; font-weight: 600;
                     border: 1px solid {stop_c}44;">{'ACTIVE' if stop_active else 'INACTIVE'}</span>
@@ -1126,10 +1131,14 @@ def render():
             </div>""", unsafe_allow_html=True)
 
         with e3:
-            # Crash detector
-            tqqq_10d_high = float(tqqq.iloc[-10:]["High"].max()) if len(tqqq) >= 10 else tqqq_price
-            tqqq_drop_10d = ((tqqq_price - tqqq_10d_high) / tqqq_10d_high) * 100
-            crash_detected = tqqq_drop_10d <= -30
+            # Crash detector — engine closes, not intraday quotes
+            if state:
+                tqqq_drop_10d = state.tqqq_drop_10d
+                crash_detected = state.crash_detected
+            else:
+                tqqq_10d_high = float(tqqq.iloc[-10:]["High"].max()) if len(tqqq) >= 10 else tqqq_price
+                tqqq_drop_10d = ((tqqq_price - tqqq_10d_high) / tqqq_10d_high) * 100
+                crash_detected = tqqq_drop_10d <= -30
             crash_c = "#f87171" if crash_detected else "#34d399"
             st.markdown(f"""<div style="border: 1px solid {crash_c}44; background: {crash_c}11;
                 border-radius: 14px; padding: 16px; min-height: 120px;">
@@ -1284,7 +1293,7 @@ The system has **three exit triggers**, designed to catch crashes early:
 
 | # | Exit Signal | Condition | Speed |
 |---|------------|-----------|-------|
-| 1 | **200-day SMA Break** | QQQ closes below its 200-day SMA for **2 consecutive days** | Primary exit — catches bear markets |
+| 1 | **200-day SMA Break** | QQQ **closes below** its 200-day SMA (a single close triggers it) | Primary exit — catches bear markets |
 | 2 | **12% Trailing Stop** | Portfolio drops 12% from its peak (only active when QQQ is >3% above 200-day) | Catches slow rollovers from bull market highs |
 | 3 | **Crash Detector** | TQQQ drops 30%+ in 10 trading days → blocks ALL entries for 40 days | Prevents re-entering during freefall (COVID, flash crashes) |
 
@@ -1320,7 +1329,8 @@ Cash earns ~4.5% annualized in SGOV (short-term Treasuries) while waiting.
 
 Not all FTDs succeed, but almost every major market rally has started with one.
 The system enters TQQQ on an FTD — even below the 200-day SMA — at 50% allocation
-as a probe. If the rally proves real, MACD will go positive and the system scales to 100%.""")
+as a probe (100% if the weekly MACD is already positive). Allocation is set at entry;
+the engine holds that position until an exit rule fires rather than scaling mid-trade.""")
 
         with st.expander("What is the Weekly MACD?"):
             st.markdown("""The **Moving Average Convergence Divergence (MACD)** on QQQ's weekly chart
@@ -1341,7 +1351,7 @@ bull and bear markets.
 - **QQQ above 200-day**: Bull market — the system is invested
 - **QQQ below 200-day**: Bear market — the system is in cash
 
-Two consecutive closes below the 200-day confirms the transition. This is
+A single close below the 200-day triggers the exit. This is
 the system's **hard exit** — it doesn't wait for MACD or other signals.
 In 2022, this got the system out in January, avoiding the -79.7% TQQQ crash.""")
 
@@ -1388,9 +1398,9 @@ This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
 
         st.markdown("### Daily Routine (30 seconds)")
         st.markdown("""
-1. **Top row** — TQQQ / QQQ prices and the **Nasdaq** & **SPY** tiles. Those show a short **market pulse**
-   (**Uptrend** / **Caution** / **Correction**) from distribution-day count and price vs 50/200-day MAs — same idea as
-   IBD-style “Confirmed Uptrend” vs “Market in Correction,” in compact labels.
+1. **Top row** — TQQQ / QQQ prices, the **Engine Regime** tile (**Strong Bull** / **Cautious Bull** / **Bear** —
+   the exact V6 entry rules: QQQ vs 200-day + weekly MACD), and a **Selling Pressure** context chip
+   (IBD-style distribution-day count — context only, it does **not** drive trades).
 2. **Position card** (when relevant) — Live **Buy / Sell / Flat** from the V6 engine on the last daily close.
 3. **Lifetime performance & equity curve** — Strategy backtest value and cumulative equity (**Period** control: 1D … All).
 4. **Market Health** — QQQ/SPY vs MAs plus **Strong Bull** / weekly MACD context tiles.
@@ -1402,8 +1412,8 @@ This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
         st.markdown("### Weekly Routine (15 minutes)")
         st.markdown("""
 1. **Model fills** — Use **Buy / Sell** markers on the **QQQ and TQQQ** chart (backtest prices on TQQQ) with the MA table for context.
-2. **Regime & distribution** — The **Nasdaq** pulse tile reflects clustering of distribution days (warn/critical
-   thresholds are built into that logic). For detail, see *How the System Works* → distribution days.
+2. **Selling pressure** — The context chip in the top row reflects clustering of Nasdaq distribution days
+   (warn/critical thresholds built in). Context only — the engine never trades off it.
 3. **Chart & MAs** — Same as daily: TQQQ vs 10/21/50/200 and “from peak” on the health cards.
 4. **Bulls %** — Optional: enter the latest [AAII](https://www.aaii.com/sentimentsurvey) bullish % in the sidebar if you track sentiment
    (used when you want that input for froth checks elsewhere in your workflow).
@@ -1413,7 +1423,7 @@ This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
         st.markdown("""
 | Section | What it tells you |
 |---------|-------------------|
-| **Top row** | Last prices; **Nasdaq / SPY pulse** (uptrend vs stress vs correction) |
+| **Top row** | Last prices; **Engine Regime** (V6 rules) and **Selling Pressure** (context only) |
 | **Live position card** | V6 **Buy / Sell / Flat** and detail for the last daily close (when Yahoo data is live) |
 | **Hero & equity chart** | Strategy backtest value and cumulative equity (same **Period** presets as the price chart) |
 | **Market Health** | QQQ & SPY vs MAs; **Strong Bull** / weekly MACD definitions |
@@ -1636,7 +1646,7 @@ This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
                             sell_trigger = "Quick exit — entry signal failed"
                             sell_conditions = [
                                 "QQQ broke below 200-day SMA within days of entry",
-                                "2 consecutive closes below 200-day confirmed",
+                                "A single close below the 200-day triggers the exit",
                                 "Position closed to preserve capital",
                             ]
                         elif t.duration_days <= 20 and t.return_pct < -8:
@@ -1650,20 +1660,20 @@ This makes IRAs the ideal vehicle — 100% of gains compound without tax drag.
                             sell_trigger = "200-day SMA breakdown"
                             sell_conditions = [
                                 "QQQ closed below its 200-day SMA",
-                                "Second consecutive close below confirmed the break",
+                                "The engine sells on the first close below",
                                 "Market transitioned from bull to bear regime",
                             ]
                         elif t.duration_days > 100:
                             sell_trigger = "200-day SMA exit after long hold"
                             sell_conditions = [
                                 f"Held for {t.duration_days} days through normal pullbacks",
-                                "QQQ eventually closed below 200-day SMA for 2 consecutive days",
+                                "QQQ eventually closed below its 200-day SMA",
                                 "The wide exit allowed riding the full uptrend",
                             ]
                         else:
                             sell_trigger = "Exit conditions met"
                             sell_conditions = [
-                                "Either QQQ broke below 200-day for 2 days",
+                                "Either QQQ closed below its 200-day SMA",
                                 "Or 12% trailing stop fired from peak",
                             ]
 

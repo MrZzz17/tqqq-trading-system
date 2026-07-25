@@ -132,6 +132,9 @@ def _yfinance_normalize(df: Optional[pd.DataFrame]) -> pd.DataFrame:
             df[c] = df["Close"]
     if "Volume" not in df.columns:
         df["Volume"] = 0.0
+    # Yahoo sometimes returns placeholder rows with NaN prices (e.g. the newest session on
+    # weekends) — a NaN close poisons quote tiles and indicators, so drop those rows here.
+    df = df.dropna(subset=["Close"])
     return df[["Open", "High", "Low", "Close", "Volume"]]
 
 

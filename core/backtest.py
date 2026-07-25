@@ -56,6 +56,11 @@ class LiveSnapshot:
     # What happened at that bar's close (same engine rules as backtest)
     last_bar_action: str  # "ENTRY" | "EXIT" | "NO_TRADE"
     last_exit_price: Optional[float] = None  # TQQQ close on exit bar, if last bar was an exit
+    # Engine internals exposed for the unified dashboard state (reporting only)
+    cooldown_until: Optional[str] = None       # entries blocked until this date (post-exit / crash)
+    ftd_cooldown_until: Optional[str] = None   # FTD entries blocked until this date
+    peak_portfolio: float = 0.0                # trailing-stop reference peak while long
+    exited: bool = False                       # True after a stop until an entry signal re-arms
 
 
 @dataclass
@@ -127,6 +132,11 @@ def _fetch(ticker: str, start: str, end: str) -> pd.DataFrame:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     df.index = pd.to_datetime(df.index)
+    # Yahoo sometimes returns placeholder rows with NaN prices (e.g. the last session
+    # on weekends). A NaN close would poison indicators, equity math, and the live
+    # snapshot, so drop those rows at the single shared fetch point.
+    if "Close" in df.columns:
+        df = df.dropna(subset=["Close"])
     return df.sort_index()
 
 
@@ -388,6 +398,10 @@ def _run_continuous(start_year: int, end_year: int, finalize_open_position: bool
             signal_type=sig,
             last_bar_action=tact,
             last_exit_price=lex,
+            cooldown_until=cooldown_until.strftime("%Y-%m-%d") if cooldown_until is not None else None,
+            ftd_cooldown_until=ftd_cooldown_until.strftime("%Y-%m-%d") if ftd_cooldown_until is not None else None,
+            peak_portfolio=round(float(peak_portfolio), 2),
+            exited=bool(exited),
         )
 
     # Optional: mark equity at last bar as 100% cash for year-end stats (do NOT add a fake trade —
@@ -479,7 +493,7 @@ def run_all_backtests():
 
 
 @st.cache_data(ttl=config.STRATEGY_ENGINE_CACHE_SECONDS, show_spinner=False)
-def get_dashboard_state(_cache_bust: int = 3) -> Tuple[Optional[LiveSnapshot], List[YearResult], Dict]:
+def get_dashboard_state(_cache_bust: int = 4) -> Tuple[Optional[LiveSnapshot], List[YearResult], Dict]:
     """Single V6 engine run: same data as live alerts, charts, and trade lists.
 
     No end-of-series synthetic exit (finalize_open_position=False). Cached together with _fetch.
