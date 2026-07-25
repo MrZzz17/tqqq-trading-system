@@ -101,6 +101,7 @@ def _try_tvdatafeed(ticker: str, n_bars: int = 500, interval: str = "daily") -> 
             df.index = df.index.normalize()
             df = df.sort_index()
             df = df[~df.index.duplicated(keep="last")]
+            df = df.dropna(subset=["Close"])
             return df[["Open", "High", "Low", "Close", "Volume"]]
 
     except Exception as e:

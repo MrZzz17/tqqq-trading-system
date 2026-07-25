@@ -355,6 +355,12 @@ def render():
         _sp_hover = html.escape(PRESSURE_TILE_HOVER, quote=True)
 
         def _pct_pill(v: float) -> str:
+            # NaN-proof: a bad quote row must never render "+nan%" on the site
+            if v is None or pd.isna(v):
+                return (
+                    '<span style="display:inline-block;flex-shrink:0;padding:4px 12px;border-radius:999px;'
+                    'font-size:0.95em;font-weight:600;background:rgba(255,255,255,0.08);color:#9ca3af;">—</span>'
+                )
             up = v >= 0
             col, bg = ("#34d399", "rgba(52,211,153,0.14)") if up else ("#f87171", "rgba(248,113,113,0.14)")
             ar = "↑" if up else "↓"
@@ -362,6 +368,9 @@ def render():
                 f'<span style="display:inline-block;flex-shrink:0;padding:4px 12px;border-radius:999px;'
                 f'font-size:0.95em;font-weight:600;background:{bg};color:{col};">{ar} {v:+.2f}%</span>'
             )
+
+        def _px_txt(v: float) -> str:
+            return "—" if (v is None or pd.isna(v)) else f"${v:.2f}"
 
         _mc = (
             "border:1px solid rgba(255,255,255,0.08);border-radius:12px;"
@@ -383,14 +392,14 @@ def render():
   <div style="{_mc}">
     <div style="{_ml}">TQQQ</div>
     <div style="{_mrow_px}">
-      <div style="{_mval}">${_tqqq_show:.2f}</div>
+      <div style="{_mval}">{_px_txt(_tqqq_show)}</div>
       {_pct_pill(tqqq_delta)}
     </div>
   </div>
   <div style="{_mc}">
     <div style="{_ml}">QQQ</div>
     <div style="{_mrow_px}">
-      <div style="{_mval}">${qqq_price:.2f}</div>
+      <div style="{_mval}">{_px_txt(qqq_price)}</div>
       {_pct_pill(qqq_delta)}
     </div>
   </div>
@@ -842,10 +851,11 @@ def render():
 
         def _ma_status(df, col, label):
             val = df.iloc[-1].get(col)
-            if val is None or pd.isna(val):
+            price = df.iloc[-1]["Close"]
+            if val is None or pd.isna(val) or pd.isna(price):
                 return label, "N/A", "N/A", "#657786"
             v = float(val)
-            price = float(df.iloc[-1]["Close"])
+            price = float(price)
             dist = ((price - v) / v) * 100
             above = price > v
             return label, f"${v:.2f}", f"{dist:+.1f}%", "#17BF63" if above else "#E0245E"
@@ -868,6 +878,7 @@ def render():
 
         def _health_card(ticker, df):
             price = float(df.iloc[-1]["Close"])
+            price_ok = not pd.isna(price)
             cross_label, cross_color = _cross_status(df)
             dd_pct, peak = _drawdown_from_peak(df)
 
@@ -875,18 +886,26 @@ def render():
             _, sma200_val, sma200_dist, sma200_color = _ma_status(df, "SMA_200", "200d")
             _, ema21_val, ema21_dist, ema21_color = _ma_status(df, "EMA_21", "21d")
 
-            above_200 = float(df.iloc[-1].get("SMA_200", 0) or 0)
-            regime_color = "#17BF63" if price > above_200 and above_200 > 0 else "#E0245E"
-            regime_label = "BULL" if price > above_200 and above_200 > 0 else "BEAR"
+            _sma200_raw = df.iloc[-1].get("SMA_200")
+            above_200 = 0.0 if (_sma200_raw is None or pd.isna(_sma200_raw)) else float(_sma200_raw)
+            if not price_ok or above_200 <= 0:
+                regime_color, regime_label = "#657786", "N/A"
+            elif price > above_200:
+                regime_color, regime_label = "#17BF63", "BULL"
+            else:
+                regime_color, regime_label = "#E0245E", "BEAR"
 
-            dd_color = "#34d399" if dd_pct >= 0 else "#f87171"
+            price_txt = f"${price:.2f}" if price_ok else "—"
+            dd_txt = f"{dd_pct:+.1f}%" if not pd.isna(dd_pct) else "N/A"
+            peak_txt = f"${peak:.2f}" if not pd.isna(peak) else "—"
+            dd_color = "#34d399" if (not pd.isna(dd_pct) and dd_pct >= 0) else "#f87171"
 
             st.markdown(f"""<div style="border: 1px solid rgba(29,161,242,0.15); border-radius: 12px;
                 padding: 18px; background: rgba(29,161,242,0.03);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                     <div>
                         <span style="font-size: 1.2em; font-weight: 800; color: #E7E9EA;">{ticker}</span>
-                        <span style="font-size: 1.2em; font-weight: 700; color: #E7E9EA; margin-left: 10px;">${price:.2f}</span>
+                        <span style="font-size: 1.2em; font-weight: 700; color: #E7E9EA; margin-left: 10px;">{price_txt}</span>
                     </div>
                     <div>
                         <span style="background: {regime_color}; color: white; padding: 3px 12px;
@@ -911,11 +930,11 @@ def render():
                     </div>
                     <div style="text-align: center;">
                         <div style="color: #6b7280; font-size: 0.72em; margin-bottom: 2px;">From Peak</div>
-                        <div style="color: {dd_color}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{dd_pct:+.1f}%</div>
+                        <div style="color: {dd_color}; font-weight: 700; font-family: 'JetBrains Mono', monospace;">{dd_txt}</div>
                     </div>
                 </div>
                 <div style="margin-top: 10px; font-size: 0.78em; color: #8899A6;">
-                    52w high: ${peak:.2f}
+                    52w high: {peak_txt}
                 </div>
             </div>""", unsafe_allow_html=True)
 
